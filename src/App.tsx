@@ -87,6 +87,9 @@ function App() {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'history'>('game');
 
+
+  const [celebratingPlayer, setCelebratingPlayer] = useState<{player: Player, teamColor: string} | null>(null);
+
   // Refs
   const playerInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const timerCircleRef = useRef<SVGCircleElement>(null);
@@ -327,6 +330,95 @@ function App() {
 
 
 
+  const triggerPlayerScoreAnimation = (teamIndex: number, playerId: string, points: number) => {
+    const team = teams[teamIndex];
+    const player = team.players.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Afficher l'animation du joueur
+    setCelebratingPlayer({ player, teamColor: team.color });
+    setTimeout(() => setCelebratingPlayer(null), 2000);
+
+    // Couleur de l'équipe pour les animations
+    const teamColor = team.color;
+
+    // 1. Confetti spécial pour le joueur
+    confetti({
+      particleCount: 50,
+      angle: 60 + teamIndex * 60,
+      spread: 50,
+      origin: { y: 0.6 },
+      colors: [teamColor],
+      scalar: 1.2
+    });
+
+    // 2. Création d'un élément flottant pour les points
+    const pointsElement = document.createElement('div');
+    pointsElement.textContent = `+${points}`;
+    pointsElement.style.position = 'fixed';
+    pointsElement.style.left = `${teamIndex === 0 ? '25%' : '75%'}`;
+    pointsElement.style.top = '60%';
+    pointsElement.style.fontSize = '3rem';
+    pointsElement.style.fontWeight = 'bold';
+    pointsElement.style.color = teamColor;
+    pointsElement.style.textShadow = '0 0 10px rgba(255,255,255,0.8)';
+    pointsElement.style.zIndex = '9999';
+    pointsElement.style.opacity = '0';
+
+    document.body.appendChild(pointsElement);
+
+    // Animation des points
+    pointsElement.animate([
+      { opacity: 0, transform: 'translateY(0) scale(0.5)' },
+      { opacity: 1, transform: 'translateY(-50px) scale(1.5)' },
+      { opacity: 0, transform: 'translateY(-100px) scale(1)' }
+    ], {
+      duration: 1500,
+      easing: 'ease-out'
+    });
+
+    // 3. Notification avec le nom du joueur
+    const playerElement = document.createElement('div');
+    playerElement.textContent = `${player.name} a marqué !`;
+    playerElement.style.position = 'fixed';
+    playerElement.style.left = '50%';
+    playerElement.style.top = '40%';
+    playerElement.style.transform = 'translateX(-50%)';
+    playerElement.style.fontSize = '1.5rem';
+    playerElement.style.color = 'white';
+    playerElement.style.backgroundColor = `${teamColor}CC`;
+    playerElement.style.padding = '10px 20px';
+    playerElement.style.borderRadius = '20px';
+    playerElement.style.zIndex = '9999';
+
+    document.body.appendChild(playerElement);
+
+    // Animation du nom du joueur
+    playerElement.animate([
+      { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' },
+      { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
+      { opacity: 0, transform: 'translateX(-50%) translateY(20px)' }
+    ], {
+      duration: 2000,
+      easing: 'ease-in-out'
+    });
+
+    // Nettoyage après l'animation
+    setTimeout(() => {
+      pointsElement.remove();
+      playerElement.remove();
+    }, 2000);
+
+    // Jouer le son des points gagnés
+    if (points > 0) {
+      playPointsGained();
+    } else {
+      playPointsLost();
+    }
+  };
+
+
+
   const triggerVictoryAnimation = (teamIndex: number) => {
     const emojis = ['🎉', '🔥', '⚡', '🏆', '✨', '👑', '💪', '🚀'];
     const teamCardRef = teamIndex === 0 ? teamACardRef : teamBCardRef;
@@ -395,6 +487,25 @@ function App() {
   };
 
 
+  const checkTeamMilestones = (teams: Team[], scoringTeamIndex: number, points: number) => {
+    const team = teams[scoringTeamIndex];
+
+    // Vérification des paliers
+    const prevScore = team.score - points;
+    if (Math.floor(prevScore / MILESTONE_POINTS) < Math.floor(team.score / MILESTONE_POINTS)) {
+      triggerMilestone(team.name);
+    }
+
+    // Détection des événements spéciaux (votre logique existante)
+    const wasLeadingBefore = getWinningTeam(teams.map((t, i) =>
+        i === scoringTeamIndex ? { ...t, score: t.score - points } : t
+    ));
+
+    const isLeadingNow = getWinningTeam(teams);
+    // ... (le reste de votre logique d'animation d'équipe)
+  };
+
+
   const triggerComebackAnimation = (teamIndex: number) => {
     const team = teams[teamIndex];
 
@@ -452,7 +563,112 @@ function App() {
     setTimeout(() => comebackText.remove(), 3000);
   };
 
+  const updatePlayerScore = (teamIndex: number, playerId: string, points: number) => {
+    playButtonClick();
+    const now = Date.now();
 
+    setTeams(prevTeams => {
+      const newTeams = prevTeams.map((team, index) => {
+        if (index !== teamIndex) return team;
+
+        // Trouver le joueur qui marque
+        const scoringPlayer = team.players.find(p => p.id === playerId);
+        if (!scoringPlayer) return team;
+
+        // Nouveau score de l'équipe
+        const newScore = team.score + points;
+
+        // Mettre à jour seulement le joueur qui marque
+        const updatedPlayers = team.players.map(p =>
+            p.id === playerId
+                ? { ...p, pointsScored: p.pointsScored + Math.max(0, points) }
+                : p
+        );
+
+        // Trouver le meilleur marqueur
+        const bestScorer = [...updatedPlayers]
+            .sort((a, b) => b.pointsScored - a.pointsScored)[0];
+
+        // Déclencher l'animation si c'est un nouveau meilleur marqueur
+        if (bestScorer.id === playerId && scoringPlayer.pointsScored <= bestScorer.pointsScored - points) {
+          triggerBestScorerAnimation(teamIndex, bestScorer);
+        }
+
+        return {
+          ...team,
+          score: newScore,
+          lastScoreChange: points,
+          scoreUpdateTimestamp: now,
+          players: updatedPlayers
+        };
+      });
+
+      // Vérifier les paliers et autres animations d'équipe
+      checkTeamMilestones(newTeams, teamIndex, points);
+
+      // Déclencher l'animation du joueur
+      const scoringPlayer = newTeams[teamIndex].players.find(p => p.id === playerId);
+      if (scoringPlayer) {
+        triggerPlayerScoreAnimation(teamIndex, playerId, points);
+      }
+
+      return newTeams;
+    });
+  };
+
+  const triggerBestScorerAnimation = (teamIndex: number, player: Player) => {
+    const team = teams[teamIndex];
+
+    // Création de l'élément DOM
+    const crownElement = document.createElement('div');
+    crownElement.innerHTML = `
+    <div style="
+      position: fixed;
+      left: ${teamIndex === 0 ? '25%' : '75%'};
+      top: 40%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+      text-align: center;
+    ">
+      <div style="
+        font-size: 4rem;
+        animation: float 3s ease-in-out infinite;
+      ">👑</div>
+      <div style="
+        background: linear-gradient(135deg, ${team.color}, #FFD700);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: bold;
+        margin-top: -20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      ">
+        ${player.name}<br>
+        <span style="font-size: 0.8em">Meilleur marqueur</span>
+      </div>
+    </div>
+  `;
+
+    document.body.appendChild(crownElement);
+
+    // Confetti doré
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => {
+        confetti({
+          particleCount: 50,
+          angle: teamIndex === 0 ? 45 : 135,
+          spread: 50,
+          origin: { x: teamIndex === 0 ? 0.25 : 0.75, y: 0.5 },
+          colors: ['#FFD700', team.color, '#FFFFFF'],
+          shapes: ['star', 'circle'],
+          scalar: 1.2
+        });
+      }, i * 300);
+    }
+
+    // Suppression après 3 secondes
+    setTimeout(() => crownElement.remove(), 3000);
+  };
 
 // Modifie updateScore pour détecter les comebacks
   const updateScore = (teamIndex: number, points: number) => {
@@ -712,6 +928,36 @@ function App() {
     playButtonClick();
   };
 
+  const PlayerCelebration = () => {
+    if (!celebratingPlayer) return null;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none"
+        >
+          <motion.div
+              animate={{
+                scale: [1, 1.1, 1],
+                y: [0, -10, 0],
+                rotate: [0, 5, -5, 0]
+              }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-blue-900 px-8 py-6 rounded-xl font-bold text-xl shadow-xl border-4 border-yellow-300 text-center"
+              style={{ backgroundColor: `${celebratingPlayer.teamColor}80` }}
+          >
+            <div className="text-4xl mb-2">🌟</div>
+            <div>{celebratingPlayer.player.name}</div>
+            <div className="text-2xl mt-2">+{celebratingPlayer.points} points</div>
+          </motion.div>
+        </motion.div>
+    );
+  };
+
+
+
 // Modifie le composant MilestoneAlert pour plus de dynamisme
   const MilestoneAlert = ({ message }: { message: string }) => {
     const emojis = ['🏆', '🎯', '🌟', '💎', '👑'];
@@ -772,15 +1018,18 @@ function App() {
         </motion.div>
     );
   };
-  const PlayerCard = ({ player, onToggle }: { player: Player; onToggle: () => void }) => {
+  const PlayerCard = ({ player, teamIndex, isBestScorer, onToggle }: {
+    player: Player;
+    teamIndex: number;
+    isBestScorer: boolean;
+    onToggle: () => void;
+  }) => {
     const [isScoring, setIsScoring] = useState(false);
 
-    const handleClick = () => {
-      if (player.isActive) {
-        setIsScoring(true);
-        setTimeout(() => setIsScoring(false), 1000);
-      }
-      onToggle();
+    const handleAddPoints = (points: number) => {
+      setIsScoring(true);
+      updatePlayerScore(teamIndex, player.id, points);
+      setTimeout(() => setIsScoring(false), 1000);
     };
 
     return (
@@ -789,37 +1038,75 @@ function App() {
             whileTap={{ scale: 0.98 }}
             className={`px-3 py-2 rounded-lg flex items-center justify-between ${
                 player.isActive
-                    ? 'bg-green-400/20 border-2 border-green-400/50'
+                    ? isBestScorer
+                        ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 border-2 border-yellow-600'
+                        : 'bg-green-400/20 border-2 border-green-400/50'
                     : 'bg-gray-400/20 border-2 border-gray-400/50'
             }`}
-            onClick={handleClick}
         >
-          <span className="text-white">{player.name}</span>
+      <span className={`${isBestScorer ? 'font-bold text-yellow-900' : 'text-white'}`}>
+        {player.name}
+      </span>
+
           <div className="flex items-center gap-2">
-            {player.isActive && (
-                <>
-            <span className="text-xs bg-green-500/50 text-white px-2 py-1 rounded">
+            <motion.span
+                className={`text-xs px-2 py-1 rounded ${
+                    isBestScorer
+                        ? 'bg-yellow-600 text-white'
+                        : 'bg-green-500/50 text-white'
+                }`}
+                animate={{
+                  scale: isScoring ? [1, 1.5, 1] : 1,
+                  backgroundColor: isScoring
+                      ? ['#FFD700', team.color, '#FFD700']
+                      : isBestScorer ? '#D4AF37' : '#10B98180'
+                }}
+            >
               {player.pointsScored} pts
-            </span>
-                  {isScoring && (
-                      <motion.span
-                          initial={{ scale: 0, y: 20 }}
-                          animate={{ scale: 1, y: 0 }}
-                          exit={{ scale: 0, opacity: 0 }}
-                          className="text-xs bg-yellow-400 text-blue-900 px-1 rounded"
-                      >
-                        +10
-                      </motion.span>
-                  )}
-                </>
+            </motion.span>
+
+            {player.isActive && (
+                <div className="flex gap-1">
+                  <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddPoints(10);
+                      }}
+                      className="text-xs bg-yellow-400 text-blue-900 px-1 rounded"
+                  >
+                    +10
+                  </motion.button>
+                  <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddPoints(-10);
+                      }}
+                      className="text-xs bg-red-400 text-white px-1 rounded"
+                  >
+                    -10
+                  </motion.button>
+                </div>
             )}
-            <span
+
+            <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggle();
+                }}
                 className={`text-sm px-2 py-1 rounded ${
-                    player.isActive ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                    player.isActive
+                        ? isBestScorer
+                            ? 'bg-yellow-600 text-white'
+                            : 'bg-green-500 text-white'
+                        : 'bg-gray-500 text-white'
                 }`}
             >
-          {player.isActive ? 'Actif' : 'Rempl.'}
-        </span>
+              {player.isActive ? 'Actif' : 'Rempl.'}
+            </button>
           </div>
         </motion.div>
     );
@@ -856,6 +1143,11 @@ function App() {
     const isWinning = getWinningTeam(teams) === teamIndex && gamePhase === 'results';
     const isLeading = getWinningTeam(teams) === teamIndex && gamePhase === 'game';
 
+    // Dans TeamCard, avant le rendu :
+    const bestScorer = team.players.reduce((max, player) =>
+            player.pointsScored > max.pointsScored ? player : max,
+        { pointsScored: -1 }
+    );
     return (
         <motion.div
             ref={teamIndex === 0 ? teamACardRef : teamBCardRef}
@@ -943,8 +1235,16 @@ function App() {
                 Joueurs Actifs
               </h3>
               <div className="grid grid-cols-2 gap-2">
-                {team.players.filter((p) => p.isActive).map((player) => (
-                    <PlayerCard key={player.id} player={player} onToggle={() => togglePlayerStatus(teamIndex, player.id)} />
+
+
+                {team.players.filter(p => p.isActive).map(player => (
+                    <PlayerCard
+                        key={player.id}
+                        player={player}
+                        teamIndex={teamIndex}
+                        isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
+                        onToggle={() => togglePlayerStatus(teamIndex, player.id)}
+                    />
                 ))}
               </div>
             </div>
@@ -953,8 +1253,15 @@ function App() {
                 <div className="space-y-2">
                   <h3 className="text-gray-400 font-semibold">Remplaçants</h3>
                   <div className="grid grid-cols-2 gap-2">
-                    {team.players.filter((p) => !p.isActive).map((player) => (
-                        <PlayerCard key={player.id} player={player} onToggle={() => togglePlayerStatus(teamIndex, player.id)} />
+
+                    {team.players.filter(p => p.isActive).map(player => (
+                        <PlayerCard
+                            key={player.id}
+                            player={player}
+                            teamIndex={teamIndex}
+                            isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
+                            onToggle={() => togglePlayerStatus(teamIndex, player.id)}
+                        />
                     ))}
                   </div>
                 </div>
@@ -1266,6 +1573,18 @@ function App() {
               </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ... */}
+        <AnimatePresence>
+          {celebratingPlayer && (
+              <PlayerCelebration
+                  player={celebratingPlayer.player}
+                  teamColor={celebratingPlayer.teamColor}
+              />
+          )}
+        </AnimatePresence>
+        {/* ... */}
+
         {/* Main Game Area */}
         <div className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8">
           {/* Team A */}
