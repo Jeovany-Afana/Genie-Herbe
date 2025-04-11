@@ -21,7 +21,7 @@ import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import useSound from 'use-sound';
 import confetti from 'canvas-confetti';
 import { DonutTimer } from './components/DonutTimer';
-import { RubriqueDisplay } from './components/RubriqueDisplay';
+import RubriqueDisplay from './components/RubriqueDisplay';
 
 // Types
 interface Player {
@@ -48,8 +48,8 @@ interface GameHistory {
 }
 
 // Constants
-const POINTS_OPTIONS = [10, 20,];
-const TIMER_OPTIONS = [5, 10,20,30,];
+const POINTS_OPTIONS = [10, 20];
+const TIMER_OPTIONS = [5, 10, 20, 30];
 const TEAM_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6'];
 const MILESTONE_POINTS = 100;
 
@@ -87,8 +87,7 @@ function App() {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'history'>('game');
 
-
-  const [celebratingPlayer, setCelebratingPlayer] = useState<{player: Player, teamColor: string} | null>(null);
+  const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
 
   // Refs
   const playerInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
@@ -97,7 +96,6 @@ function App() {
   const teamBCardRef = useRef<HTMLDivElement>(null);
 
   // Animations
-  // Nous n'utiliserons plus timerControls dans DonutTimer, car l'animation est directement appliquée sur le <motion.span>.
   const teamAControls = useAnimation();
   const teamBControls = useAnimation();
 
@@ -142,16 +140,15 @@ function App() {
       });
     }
   }, [isRunning, time, playTimerEnd]);
-// Fonctions utilitaires
+
+  // Fonctions utilitaires
   const updateTeamName = (teamIndex: number, newName: string) => {
     setTeams((prevTeams) =>
         prevTeams.map((team, index) => (index === teamIndex ? { ...team, name: newName } : team))
     );
   };
 
-
   const triggerTieAnimation = () => {
-    // Confetti spécial égalité (2 couleurs)
     confetti({
       particleCount: 100,
       angle: 90,
@@ -160,7 +157,6 @@ function App() {
       colors: [teams[0].color, teams[1].color]
     });
 
-    // Animation de vibration des deux cartes
     teamAControls.start({
       x: [0, -10, 10, -5, 5, 0],
       transition: { duration: 0.5 }
@@ -171,7 +167,6 @@ function App() {
       transition: { duration: 0.5 }
     });
 
-    // Texte "ÉGALITÉ !"
     const tieText = document.createElement('div');
     tieText.textContent = 'ÉGALITÉ !';
     tieText.style.position = 'fixed';
@@ -195,12 +190,9 @@ function App() {
     setTimeout(() => tieText.remove(), 2000);
   };
 
-
   const triggerNewLeaderAnimation = (teamIndex: number) => {
     const team = teams[teamIndex];
-    const opponentIndex = teamIndex === 0 ? 1 : 0;
 
-    // Gros confetti en arc de cercle
     confetti({
       particleCount: 150,
       angle: 60 + teamIndex * 60,
@@ -210,7 +202,6 @@ function App() {
       scalar: 1.2
     });
 
-    // Flèche animée pointant vers le haut
     const arrow = document.createElement('div');
     arrow.innerHTML = '⬆️';
     arrow.style.position = 'fixed';
@@ -231,7 +222,6 @@ function App() {
       easing: 'ease-out'
     });
 
-    // Texte "NOUVEAU LEADER !"
     const leaderText = document.createElement('div');
     leaderText.textContent = 'NOUVEAU LEADER !';
     leaderText.style.position = 'fixed';
@@ -252,7 +242,6 @@ function App() {
       { opacity: 0, transform: 'translateX(-50%) translateY(50px)' }
     ], { duration: 2000, easing: 'ease-in-out' });
 
-    // Flash de la carte
     const controls = teamIndex === 0 ? teamAControls : teamBControls;
     controls.start({
       scale: [1, 1.1, 1],
@@ -266,13 +255,11 @@ function App() {
     }, 2000);
   };
 
-
   const triggerCatchUpAnimation = (teamIndex: number) => {
     const team = teams[teamIndex];
     const opponentIndex = teamIndex === 0 ? 1 : 0;
     const diff = teams[opponentIndex].score - team.score;
 
-    // Messages d'encouragement en fonction de l'écart
     const messages = {
       small: ["ALLEZ !", "PRÈS DU BUT !", "CONTINUEZ !"],
       medium: ["BEAU EFFORT !", "VOUS Y ÊTES !", "ACCROCHEZ-VOUS !"],
@@ -285,7 +272,6 @@ function App() {
 
     const message = messages[messageType][Math.floor(Math.random() * messages[messageType].length)];
 
-    // Création du texte d'encouragement
     const encouragementText = document.createElement('div');
     encouragementText.textContent = message;
     encouragementText.style.position = 'fixed';
@@ -301,7 +287,6 @@ function App() {
 
     document.body.appendChild(encouragementText);
 
-    // Animation du texte
     encouragementText.animate([
       { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' },
       { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
@@ -311,7 +296,6 @@ function App() {
       easing: 'ease-in-out'
     });
 
-    // Petits confettis incitatifs
     for (let i = 0; i < 3; i++) {
       setTimeout(() => {
         confetti({
@@ -328,21 +312,16 @@ function App() {
     setTimeout(() => encouragementText.remove(), 2000);
   };
 
-
-
   const triggerPlayerScoreAnimation = (teamIndex: number, playerId: string, points: number) => {
     const team = teams[teamIndex];
     const player = team.players.find(p => p.id === playerId);
     if (!player) return;
 
-    // Afficher l'animation du joueur
     setCelebratingPlayer({ player, teamColor: team.color });
     setTimeout(() => setCelebratingPlayer(null), 2000);
 
-    // Couleur de l'équipe pour les animations
     const teamColor = team.color;
 
-    // 1. Confetti spécial pour le joueur
     confetti({
       particleCount: 50,
       angle: 60 + teamIndex * 60,
@@ -352,7 +331,6 @@ function App() {
       scalar: 1.2
     });
 
-    // 2. Création d'un élément flottant pour les points
     const pointsElement = document.createElement('div');
     pointsElement.textContent = `+${points}`;
     pointsElement.style.position = 'fixed';
@@ -367,7 +345,6 @@ function App() {
 
     document.body.appendChild(pointsElement);
 
-    // Animation des points
     pointsElement.animate([
       { opacity: 0, transform: 'translateY(0) scale(0.5)' },
       { opacity: 1, transform: 'translateY(-50px) scale(1.5)' },
@@ -377,7 +354,6 @@ function App() {
       easing: 'ease-out'
     });
 
-    // 3. Notification avec le nom du joueur
     const playerElement = document.createElement('div');
     playerElement.textContent = `${player.name} a marqué !`;
     playerElement.style.position = 'fixed';
@@ -393,7 +369,6 @@ function App() {
 
     document.body.appendChild(playerElement);
 
-    // Animation du nom du joueur
     playerElement.animate([
       { opacity: 0, transform: 'translateX(-50%) translateY(-20px)' },
       { opacity: 1, transform: 'translateX(-50%) translateY(0)' },
@@ -403,21 +378,17 @@ function App() {
       easing: 'ease-in-out'
     });
 
-    // Nettoyage après l'animation
     setTimeout(() => {
       pointsElement.remove();
       playerElement.remove();
     }, 2000);
 
-    // Jouer le son des points gagnés
     if (points > 0) {
       playPointsGained();
     } else {
       playPointsLost();
     }
   };
-
-
 
   const triggerVictoryAnimation = (teamIndex: number) => {
     const emojis = ['🎉', '🔥', '⚡', '🏆', '✨', '👑', '💪', '🚀'];
@@ -428,7 +399,6 @@ function App() {
       const centerX = rect.left + rect.width / 2;
       const centerY = rect.top + rect.height / 2;
 
-      // Animation de confetti spéciale pour la victoire
       confetti({
         particleCount: 100,
         spread: 70,
@@ -436,7 +406,6 @@ function App() {
         colors: [teams[teamIndex].color]
       });
 
-      // Crée des emojis animés
       for (let i = 0; i < 12; i++) {
         const emoji = document.createElement('div');
         emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
@@ -450,7 +419,6 @@ function App() {
 
         document.body.appendChild(emoji);
 
-        // Animation de l'emoji
         const angle = Math.random() * Math.PI * 2;
         const velocity = 2 + Math.random() * 3;
         const x = Math.cos(angle) * velocity;
@@ -467,7 +435,6 @@ function App() {
           easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
         });
 
-        // Supprime l'emoji après l'animation
         setTimeout(() => {
           emoji.remove();
         }, duration);
@@ -486,30 +453,23 @@ function App() {
     setIsRunning(false);
   };
 
-
   const checkTeamMilestones = (teams: Team[], scoringTeamIndex: number, points: number) => {
     const team = teams[scoringTeamIndex];
-
-    // Vérification des paliers
     const prevScore = team.score - points;
     if (Math.floor(prevScore / MILESTONE_POINTS) < Math.floor(team.score / MILESTONE_POINTS)) {
       triggerMilestone(team.name);
     }
 
-    // Détection des événements spéciaux (votre logique existante)
     const wasLeadingBefore = getWinningTeam(teams.map((t, i) =>
         i === scoringTeamIndex ? { ...t, score: t.score - points } : t
     ));
 
     const isLeadingNow = getWinningTeam(teams);
-    // ... (le reste de votre logique d'animation d'équipe)
   };
-
 
   const triggerComebackAnimation = (teamIndex: number) => {
     const team = teams[teamIndex];
 
-    // Confetti en forme de vague montante
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
         confetti({
@@ -524,7 +484,6 @@ function App() {
       }, i * 200);
     }
 
-    // Gros texte animé avec effet de vague
     const comebackText = document.createElement('div');
     comebackText.textContent = 'REMOONTADA !!!';
     comebackText.style.position = 'fixed';
@@ -540,7 +499,6 @@ function App() {
 
     document.body.appendChild(comebackText);
 
-    // Animation de chaque lettre individuellement
     const letters = comebackText.textContent.split('');
     comebackText.textContent = '';
     letters.forEach((letter, i) => {
@@ -571,26 +529,15 @@ function App() {
       const newTeams = prevTeams.map((team, index) => {
         if (index !== teamIndex) return team;
 
-        // Trouver le joueur qui marque
-        const scoringPlayer = team.players.find(p => p.id === playerId);
-        if (!scoringPlayer) return team;
-
-        // Nouveau score de l'équipe
         const newScore = team.score + points;
-
-        // Mettre à jour seulement le joueur qui marque
         const updatedPlayers = team.players.map(p =>
             p.id === playerId
                 ? { ...p, pointsScored: p.pointsScored + Math.max(0, points) }
                 : p
         );
 
-        // Trouver le meilleur marqueur
-        const bestScorer = [...updatedPlayers]
-            .sort((a, b) => b.pointsScored - a.pointsScored)[0];
-
-        // Déclencher l'animation si c'est un nouveau meilleur marqueur
-        if (bestScorer.id === playerId && scoringPlayer.pointsScored <= bestScorer.pointsScored - points) {
+        const bestScorer = [...updatedPlayers].sort((a, b) => b.pointsScored - a.pointsScored)[0];
+        if (bestScorer.id === playerId && team.players.find(p => p.id === playerId)!.pointsScored <= bestScorer.pointsScored - points) {
           triggerBestScorerAnimation(teamIndex, bestScorer);
         }
 
@@ -603,15 +550,36 @@ function App() {
         };
       });
 
-      // Vérifier les paliers et autres animations d'équipe
       checkTeamMilestones(newTeams, teamIndex, points);
 
-      // Déclencher l'animation du joueur
+      const wasLeadingBefore = getWinningTeam(prevTeams);
+      const isLeadingNow = getWinningTeam(newTeams);
+      const prevDiff = Math.abs(prevTeams[0].score - prevTeams[1].score);
+      const newDiff = Math.abs(newTeams[0].score - newTeams[1].score);
+      const opponentIndex = teamIndex === 0 ? 1 : 0;
+
+      if (newTeams[0].score === newTeams[1].score) {
+        triggerTieAnimation();
+      } else if (wasLeadingBefore !== isLeadingNow && isLeadingNow !== -1) {
+        if (prevDiff >= 20) {
+          triggerComebackAnimation(isLeadingNow);
+        } else {
+          triggerNewLeaderAnimation(isLeadingNow);
+        }
+      } else if (newDiff < 10 && prevDiff >= 10) {
+        if (newTeams[teamIndex].score < newTeams[opponentIndex].score) {
+          triggerCatchUpAnimation(teamIndex);
+        }
+      } else if (points > 0 && newTeams[teamIndex].score < newTeams[opponentIndex].score) {
+        if (Math.random() < 0.2) {
+          triggerCatchUpAnimation(teamIndex);
+        }
+      }
+
       const scoringPlayer = newTeams[teamIndex].players.find(p => p.id === playerId);
       if (scoringPlayer) {
         triggerPlayerScoreAnimation(teamIndex, playerId, points);
       }
-
       return newTeams;
     });
   };
@@ -619,39 +587,37 @@ function App() {
   const triggerBestScorerAnimation = (teamIndex: number, player: Player) => {
     const team = teams[teamIndex];
 
-    // Création de l'élément DOM
     const crownElement = document.createElement('div');
     crownElement.innerHTML = `
-    <div style="
-      position: fixed;
-      left: ${teamIndex === 0 ? '25%' : '75%'};
-      top: 40%;
-      transform: translate(-50%, -50%);
-      z-index: 1000;
-      text-align: center;
-    ">
       <div style="
-        font-size: 4rem;
-        animation: float 3s ease-in-out infinite;
-      ">👑</div>
-      <div style="
-        background: linear-gradient(135deg, ${team.color}, #FFD700);
-        color: white;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-weight: bold;
-        margin-top: -20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        position: fixed;
+        left: ${teamIndex === 0 ? '25%' : '75%'};
+        top: 40%;
+        transform: translate(-50%, -50%);
+        z-index: 1000;
+        text-align: center;
       ">
-        ${player.name}<br>
-        <span style="font-size: 0.8em">Meilleur marqueur</span>
+        <div style="
+          font-size: 4rem;
+          animation: float 3s ease-in-out infinite;
+        ">👑</div>
+        <div style="
+          background: linear-gradient(135deg, ${team.color}, #FFD700);
+          color: white;
+          padding: 8px 16px;
+          border-radius: 20px;
+          font-weight: bold;
+          margin-top: -20px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        ">
+          ${player.name}<br>
+          <span style="font-size: 0.8em">Meilleur marqueur</span>
+        </div>
       </div>
-    </div>
-  `;
+    `;
 
     document.body.appendChild(crownElement);
 
-    // Confetti doré
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
         confetti({
@@ -666,11 +632,10 @@ function App() {
       }, i * 300);
     }
 
-    // Suppression après 3 secondes
     setTimeout(() => crownElement.remove(), 3000);
   };
 
-// Modifie updateScore pour détecter les comebacks
+  // Modifie updateScore pour détecter les comebacks
   const updateScore = (teamIndex: number, points: number) => {
     playButtonClick();
     const now = Date.now();
@@ -679,7 +644,6 @@ function App() {
         if (index === teamIndex) {
           const newScore = team.score + points;
 
-          // Vérification du palier
           if (Math.floor(team.score / MILESTONE_POINTS) < Math.floor(newScore / MILESTONE_POINTS)) {
             triggerMilestone(team.name);
           }
@@ -690,14 +654,13 @@ function App() {
             lastScoreChange: points,
             scoreUpdateTimestamp: now,
             players: team.players.map(p =>
-                p.isActive ? {...p, pointsScored: p.pointsScored + Math.max(0, points)} : p
+                p.isActive ? { ...p, pointsScored: p.pointsScored + Math.max(0, points) } : p
             )
           };
         }
         return team;
       });
 
-      // Détection des événements spéciaux
       const wasLeadingBefore = getWinningTeam(prevTeams);
       const isLeadingNow = getWinningTeam(newTeams);
       const prevDiff = Math.abs(prevTeams[0].score - prevTeams[1].score);
@@ -705,32 +668,22 @@ function App() {
       const scoringTeamIndex = teamIndex;
       const opponentIndex = teamIndex === 0 ? 1 : 0;
 
-      console.log("Leader avant:", wasLeadingBefore, "Leader maintenant:", isLeadingNow); // Debug
+      console.log("Leader avant:", wasLeadingBefore, "Leader maintenant:", isLeadingNow);
 
-      // Égalité
       if (newTeams[0].score === newTeams[1].score) {
         triggerTieAnimation();
-      }
-      // Nouveau leader
-      else if (wasLeadingBefore !== isLeadingNow && isLeadingNow !== -1) {
-        console.log("Nouveau leader détecté:", isLeadingNow); // Debug
-        // Remontada si l'écart était important
+      } else if (wasLeadingBefore !== isLeadingNow && isLeadingNow !== -1) {
+        console.log("Nouveau leader détecté:", isLeadingNow);
         if (prevDiff >= 20) {
           triggerComebackAnimation(isLeadingNow);
         } else {
           triggerNewLeaderAnimation(isLeadingNow);
         }
-      }
-      // Réduction d'écart significative (sans encore prendre la tête)
-      else if (newDiff < 10 && prevDiff >= 10) {
-        // On encourage l'équipe qui était derrière si c'est elle qui marque
+      } else if (newDiff < 10 && prevDiff >= 10) {
         if (newTeams[scoringTeamIndex].score < newTeams[opponentIndex].score) {
           triggerCatchUpAnimation(scoringTeamIndex);
         }
-      }
-      // L'équipe qui était derrière marque (mais écart reste > 10)
-      else if (points > 0 && newTeams[scoringTeamIndex].score < newTeams[opponentIndex].score) {
-        // 20% de chance de déclencher un encouragement aléatoire
+      } else if (points > 0 && newTeams[scoringTeamIndex].score < newTeams[opponentIndex].score) {
         if (Math.random() < 0.2) {
           triggerCatchUpAnimation(scoringTeamIndex);
         }
@@ -740,12 +693,11 @@ function App() {
       return newTeams;
     });
   };
-// Modifie la fonction triggerMilestone pour une animation plus riche
+
   const triggerMilestone = (teamName: string) => {
     setShowAlert(`Bravo ${teamName} ! ${MILESTONE_POINTS} points atteints !`);
     playMilestone();
 
-    // Confetti spécial pour les milestones
     confetti({
       particleCount: 150,
       spread: 90,
@@ -753,7 +705,6 @@ function App() {
       colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff']
     });
 
-    // Ajoute des emojis qui tombent
     const emojis = ['🎯', '🏅', '🥇', '💎', '🌟', '👏'];
     for (let i = 0; i < 15; i++) {
       setTimeout(() => {
@@ -787,7 +738,6 @@ function App() {
     setTimeout(() => setShowAlert(''), 3000);
   };
 
-
   const addPlayer = (teamIndex: number) => {
     const inputRef = playerInputRefs[teamIndex];
     if (!inputRef.current) return;
@@ -817,7 +767,6 @@ function App() {
   };
 
   const swapTeamPositions = () => {
-    // Animation de transition
     teamAControls.start({
       x: [0, 50, 0],
       transition: { duration: 0.5 }
@@ -827,7 +776,6 @@ function App() {
       transition: { duration: 0.5 }
     });
 
-    // Changement des positions après un léger délai
     setTimeout(() => {
       setTeams(teams.map((team) => ({
         ...team,
@@ -908,7 +856,7 @@ function App() {
   const getWinningTeam = (teamsArray: Team[] = teams) => {
     if (teamsArray[0].score > teamsArray[1].score) return 0;
     if (teamsArray[1].score > teamsArray[0].score) return 1;
-    return -1; // Égalité
+    return -1;
   };
 
   const togglePlayerStatus = (teamIndex: number, playerId: string) => {
@@ -956,9 +904,6 @@ function App() {
     );
   };
 
-
-
-// Modifie le composant MilestoneAlert pour plus de dynamisme
   const MilestoneAlert = ({ message }: { message: string }) => {
     const emojis = ['🏆', '🎯', '🌟', '💎', '👑'];
     const [currentEmoji, setCurrentEmoji] = useState(emojis[0]);
@@ -1018,6 +963,7 @@ function App() {
         </motion.div>
     );
   };
+
   const PlayerCard = ({ player, teamIndex, isBestScorer, onToggle }: {
     player: Player;
     teamIndex: number;
@@ -1044,9 +990,9 @@ function App() {
                     : 'bg-gray-400/20 border-2 border-gray-400/50'
             }`}
         >
-      <span className={`${isBestScorer ? 'font-bold text-yellow-900' : 'text-white'}`}>
-        {player.name}
-      </span>
+        <span className={`${isBestScorer ? 'font-bold text-yellow-900' : 'text-white'}`}>
+          {player.name}
+        </span>
 
           <div className="flex items-center gap-2">
             <motion.span
@@ -1111,7 +1057,7 @@ function App() {
         </motion.div>
     );
   };
-  // Composant ScoreButton (inchangé)
+
   const ScoreButton = ({ points, onClick, isPositive }: { points: number; onClick: () => void; isPositive: boolean }) => {
     return (
         <motion.button
@@ -1130,7 +1076,6 @@ function App() {
     );
   };
 
-  // Composant TeamCard avec adaptation pour afficher la couronne et ajouter un effet de pulsation sur la carte gagnante
   const TeamCard = ({
                       team,
                       teamIndex,
@@ -1143,7 +1088,6 @@ function App() {
     const isWinning = getWinningTeam(teams) === teamIndex && gamePhase === 'results';
     const isLeading = getWinningTeam(teams) === teamIndex && gamePhase === 'game';
 
-    // Dans TeamCard, avant le rendu :
     const bestScorer = team.players.reduce((max, player) =>
             player.pointsScored > max.pointsScored ? player : max,
         { pointsScored: -1 }
@@ -1161,9 +1105,6 @@ function App() {
               borderColor: isWinning ? team.color : isLeading ? team.color : `${team.color}50`
             }}
         >
-
-          {/* Indicateur de l'équipe dominante (pendant le jeu) */}
-
           {isLeading && gamePhase === 'game' && (
               <motion.div
                   initial={{ scale: 0 }}
@@ -1183,7 +1124,6 @@ function App() {
                 🏆
               </motion.div>
           )}
-
 
           {isWinning && (
               <motion.div
@@ -1216,18 +1156,42 @@ function App() {
             </div>
           </div>
 
-          <motion.div
-              animate={{ scale: team.lastScoreChange !== 0 ? [1, 1.1, 1] : 1 }}
-              className={`text-7xl font-bold text-center my-4 tabular-nums ${
-                  team.lastScoreChange > 0
-                      ? 'text-green-400'
-                      : team.lastScoreChange < 0
-                          ? 'text-red-400'
-                          : 'text-white'
-              }`}
-          >
-            {team.score}
-          </motion.div>
+          {/* Regroupement du score et des boutons sur la même ligne */}
+          <div className="flex items-center justify-between my-4">
+            <motion.div
+                animate={{ scale: team.lastScoreChange !== 0 ? [1, 1.1, 1] : 1 }}
+                className={`text-7xl font-bold tabular-nums ${
+                    team.lastScoreChange > 0
+                        ? 'text-green-400'
+                        : team.lastScoreChange < 0
+                            ? 'text-red-400'
+                            : 'text-white'
+                }`}
+            >
+              {team.score}
+            </motion.div>
+
+            {gamePhase === 'game' && (
+                <div className="flex gap-2">
+                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
+                      <ScoreButton
+                          key={`add-${point}`}
+                          points={point}
+                          onClick={() => updateScore(teamIndex, point)}
+                          isPositive={true}
+                      />
+                  ))}
+                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
+                      <ScoreButton
+                          key={`subtract-${point}`}
+                          points={point}
+                          onClick={() => updateScore(teamIndex, -point)}
+                          isPositive={false}
+                      />
+                  ))}
+                </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 gap-4 mb-4">
             <div className="space-y-2">
@@ -1235,8 +1199,6 @@ function App() {
                 Joueurs Actifs
               </h3>
               <div className="grid grid-cols-2 gap-2">
-
-
                 {team.players.filter(p => p.isActive).map(player => (
                     <PlayerCard
                         key={player.id}
@@ -1249,12 +1211,12 @@ function App() {
               </div>
             </div>
 
+            {/* Correction sur l'affichage des remplaçants */}
             {team.players.filter((p) => !p.isActive).length > 0 && (
                 <div className="space-y-2">
                   <h3 className="text-gray-400 font-semibold">Remplaçants</h3>
                   <div className="grid grid-cols-2 gap-2">
-
-                    {team.players.filter(p => p.isActive).map(player => (
+                    {team.players.filter(p => !p.isActive).map(player => (
                         <PlayerCard
                             key={player.id}
                             player={player}
@@ -1270,37 +1232,17 @@ function App() {
 
           {gamePhase === 'game' && (
               <div className="grid grid-cols-2 gap-3 mt-auto">
-                <div className="space-y-2">
-                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
-                      <ScoreButton
-                          key={`add-${point}`}
-                          points={point}
-                          onClick={() => updateScore(teamIndex, point)}
-                          isPositive={true}
-                      />
-                  ))}
-                </div>
-                <div className="space-y-2">
-                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
-                      <ScoreButton
-                          key={`subtract-${point}`}
-                          points={point}
-                          onClick={() => updateScore(teamIndex, -point)}
-                          isPositive={false}
-                      />
-                  ))}
-                </div>
+                {/* Comme les boutons de score sont maintenant affichés dans le conteneur au-dessus,
+                on peut omettre leur affichage ici si souhaité */}
               </div>
           )}
         </motion.div>
     );
   };
 
-  // Composant TimerCard intégrant le DonutTimer et les contrôles de timer
   const TimerCard = () => {
     return (
         <motion.div
-            //initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="glass-effect rounded-xl p-6 shadow-xl border-2 border-yellow-400/30 flex flex-col items-center justify-center"
         >
@@ -1347,7 +1289,7 @@ function App() {
         </motion.div>
     );
   };
-  // Rendu de l'application
+
   if (gamePhase === 'setup') {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-900 gradient-animate p-4 md:p-8 flex items-center justify-center">
@@ -1416,7 +1358,7 @@ function App() {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           {team.players.map((player) => (
-                              <PlayerCard key={player.id} player={player} onToggle={() => togglePlayerStatus(index, player.id)} />
+                              <PlayerCard key={player.id} player={player} onToggle={() => togglePlayerStatus(index, player.id)} teamIndex={index} isBestScorer={false} />
                           ))}
                         </div>
                       </div>
@@ -1458,7 +1400,6 @@ function App() {
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-900 gradient-animate p-4 flex flex-col">
         <AnimatePresence>{showAlert && <MilestoneAlert message={showAlert} />}</AnimatePresence>
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <motion.h1 initial={{ y: -20 }} animate={{ y: 0 }} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200 flex items-center gap-3">
             <Trophy className="h-8 w-8 text-yellow-400" />
@@ -1474,7 +1415,6 @@ function App() {
           </div>
         </div>
         <RubriqueDisplay />
-        {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
               <motion.div
@@ -1574,7 +1514,6 @@ function App() {
           )}
         </AnimatePresence>
 
-        {/* ... */}
         <AnimatePresence>
           {celebratingPlayer && (
               <PlayerCelebration
@@ -1583,18 +1522,13 @@ function App() {
               />
           )}
         </AnimatePresence>
-        {/* ... */}
 
-        {/* Main Game Area */}
         <div className="flex-1 flex flex-col lg:flex-row items-center justify-center gap-4 lg:gap-8">
-          {/* Team A */}
           <TeamCard team={teams[0]} teamIndex={0} controls={teamAControls} />
-          {/* Timer */}
           <TimerCard />
-          {/* Team B */}
           <TeamCard team={teams[1]} teamIndex={1} controls={teamBControls} />
         </div>
-        {/* Game Controls */}
+
         {gamePhase === 'game' && (
             <div className="flex justify-center mt-6">
               <motion.button
@@ -1608,7 +1542,7 @@ function App() {
               </motion.button>
             </div>
         )}
-        {/* Results Screen */}
+
         {gamePhase === 'results' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
               <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="glass-effect rounded-2xl p-8 max-w-md w-full border-2 border-yellow-400/50">
