@@ -964,6 +964,261 @@ function App() {
     );
   };
 
+
+
+  const ScoreButton = ({ points, onClick, isPositive }: { points: number; onClick: () => void; isPositive: boolean }) => {
+    return (
+        <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onClick}
+            className={`w-full flex items-center justify-center gap-1 py-2 rounded-lg font-semibold ${
+                isPositive
+                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900'
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
+            }`}
+        >
+          {isPositive ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
+          {points}
+        </motion.button>
+    );
+  };
+
+
+  const TeamCard = ({
+                      team,
+                      teamIndex,
+                      controls
+                    }: {
+    team: Team;
+    teamIndex: number;
+    controls: any;
+  }) => {
+    const isWinning = getWinningTeam(teams) === teamIndex && gamePhase === 'results';
+    const isLeading = getWinningTeam(teams) === teamIndex && gamePhase === 'game';
+    const [isHovered, setIsHovered] = useState(false);
+
+    const bestScorer = team.players.reduce((max, player) =>
+            player.pointsScored > max.pointsScored ? player : max,
+        { pointsScored: -1 }
+    );
+
+    return (
+        <motion.div
+            ref={teamIndex === 0 ? teamACardRef : teamBCardRef}
+            animate={controls}
+            whileHover={{ y: -5 }}
+            onHoverStart={() => setIsHovered(true)}
+            onHoverEnd={() => setIsHovered(false)}
+            className={`relative w-full rounded-2xl p-6 shadow-2xl overflow-hidden transition-all duration-300 ${
+                isWinning
+                    ? 'ring-4 ring-yellow-400 ring-opacity-80 glow-effect'
+                    : isLeading
+                        ? 'ring-2 ring-yellow-400 ring-opacity-50'
+                        : ''
+            }`}
+            style={{
+              background: `linear-gradient(145deg, ${team.color}08, ${team.color}03)`,
+              backdropFilter: 'blur(10px)',
+              border: `1px solid ${team.color}30`
+            }}
+        >
+          {/* Effet de fond animé */}
+          <motion.div
+              animate={{
+                opacity: isHovered ? 0.1 : 0.05,
+                scale: isHovered ? 1.1 : 1
+              }}
+              className="absolute inset-0 z-0"
+              style={{
+                background: `radial-gradient(circle at center, ${team.color}40 0%, transparent 70%)`
+              }}
+          />
+
+          {/* Effet de particules flottantes */}
+          {[...Array(5)].map((_, i) => (
+              <motion.div
+                  key={i}
+                  animate={{
+                    x: [0, Math.random() * 40 - 20],
+                    y: [0, Math.random() * 40 - 20],
+                    opacity: [0.3, 0.7, 0.3],
+                    transition: {
+                      duration: 3 + Math.random() * 4,
+                      repeat: Infinity,
+                      repeatType: "reverse"
+                    }
+                  }}
+                  className="absolute rounded-full z-0"
+                  style={{
+                    width: `${Math.random() * 10 + 5}px`,
+                    height: `${Math.random() * 10 + 5}px`,
+                    backgroundColor: team.color,
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    filter: 'blur(1px)'
+                  }}
+              />
+          ))}
+
+          {/* Badge leader/winner */}
+          {(isLeading || isWinning) && (
+            <motion.div
+            initial={{ scale: 0 }}
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0],
+              y: [0, -5, 0]
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute -top-3 -right-3 z-10"
+        >
+          <div className="relative">
+            <div
+                className="absolute inset-0 rounded-full animate-ping"
+                style={{ backgroundColor: team.color, opacity: 0.4 }}
+            />
+            <div
+                className="relative flex items-center justify-center w-12 h-12 rounded-full shadow-lg"
+                style={{ backgroundColor: team.color }}
+            >
+              {isWinning ? (
+                  <Crown className="h-6 w-6 text-white" />
+              ) : (
+                  <Trophy className="h-5 w-5 text-white" />
+              )}
+            </div>
+          </div>
+        </motion.div>
+    )}
+
+    {/* En-tête de la carte */}
+    <div className="relative z-10 flex items-center justify-between mb-6">
+      <div className="flex items-center gap-3">
+        <motion.div
+            animate={{
+              rotate: isHovered ? [0, 10, -10, 0] : 0,
+              transition: { duration: 1 }
+            }}
+            className="flex items-center justify-center w-10 h-10 rounded-lg"
+            style={{ backgroundColor: `${team.color}20` }}
+        >
+          <Users className="h-5 w-5" style={{ color: team.color }} />
+        </motion.div>
+
+        <div>
+          <h2
+              className="text-2xl font-bold tracking-tight"
+              style={{ color: team.color }}
+          >
+            {team.name}
+          </h2>
+          <span className="text-xs font-medium text-white/60">
+              {team.isTeamA ? 'Équipe A' : 'Équipe B'}
+            </span>
+        </div>
+      </div>
+
+      {gamePhase === 'setup' && (
+          <button
+              onClick={() => changeTeamColor(team.id)}
+              className="w-8 h-8 rounded-full border-2 border-white/50 hover:border-white transition-all"
+              style={{ backgroundColor: team.color }}
+          />
+      )}
+    </div>
+
+    {/* Score principal */}
+    <div className="relative z-10 mb-6">
+      <motion.div
+          animate={{
+            scale: team.lastScoreChange !== 0 ? [1, 1.05, 1] : 1,
+            color: team.lastScoreChange > 0
+                ? ['#ffffff', '#4ade80', '#ffffff']
+                : team.lastScoreChange < 0
+                    ? ['#ffffff', '#f87171', '#ffffff']
+                    : '#ffffff'
+          }}
+          transition={{ duration: 0.5 }}
+          className="text-6xl font-bold text-center tabular-nums mb-2"
+      >
+        {team.score}
+      </motion.div>
+
+      {gamePhase === 'game' && (
+          <div className="grid grid-cols-4 gap-2">
+            {[...POINTS_OPTIONS, ...POINTS_OPTIONS].map((point, i) => (
+                <motion.button
+                    key={`${i}-${point}`}
+                    whileHover={{ y: -2, scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => updateScore(teamIndex, i < POINTS_OPTIONS.length ? point : -point)}
+                    className={`flex items-center justify-center gap-1 py-2 rounded-lg font-medium text-sm transition-all ${
+                        i < POINTS_OPTIONS.length
+                            ? 'bg-gradient-to-br from-green-400 to-green-500 text-white'
+                            : 'bg-gradient-to-br from-red-400 to-red-500 text-white'
+                    }`}
+                >
+                  {i < POINTS_OPTIONS.length ? (
+                      <Plus className="h-3 w-3" />
+                  ) : (
+                      <Minus className="h-3 w-3" />
+                  )}
+                  {point}
+                </motion.button>
+            ))}
+          </div>
+      )}
+    </div>
+
+    {/* Liste des joueurs */}
+          {/* Liste des joueurs */}
+          <div className="relative z-10 space-y-4">
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: team.color }}>
+                Joueurs {team.players.filter(p => p.isActive).length > 0 && `(${team.players.filter(p => p.isActive).length})`}
+              </h3>
+              <div className="grid grid-cols-2 gap-2"> {/* Modifié de grid-cols-1 à grid-cols-2 */}
+                {team.players.filter(p => p.isActive).map(player => (
+                    <PlayerCard
+                        key={player.id}
+                        player={player}
+                        teamIndex={teamIndex}
+                        isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
+                        onToggle={() => togglePlayerStatus(teamIndex, player.id)}
+                    />
+                ))}
+              </div>
+            </div>
+
+            {team.players.filter(p => !p.isActive).length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white/50">
+                    Remplaçants ({team.players.filter(p => !p.isActive).length})
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2"> {/* Modifié de grid-cols-1 à grid-cols-2 */}
+                    {team.players.filter(p => !p.isActive).map(player => (
+                        <PlayerCard
+                            key={player.id}
+                            player={player}
+                            teamIndex={teamIndex}
+                            isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
+                            onToggle={() => togglePlayerStatus(teamIndex, player.id)}
+                        />
+                    ))}
+                  </div>
+                </div>
+            )}
+          </div>
+  </motion.div>
+  );
+  };
+
+// Et voici le PlayerCard amélioré qui va avec :
   const PlayerCard = ({ player, teamIndex, isBestScorer, onToggle }: {
     player: Player;
     teamIndex: number;
@@ -1058,187 +1313,7 @@ function App() {
     );
   };
 
-  const ScoreButton = ({ points, onClick, isPositive }: { points: number; onClick: () => void; isPositive: boolean }) => {
-    return (
-        <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onClick}
-            className={`w-full flex items-center justify-center gap-1 py-2 rounded-lg font-semibold ${
-                isPositive
-                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900'
-                    : 'bg-gradient-to-r from-blue-500 to-blue-600 text-white'
-            }`}
-        >
-          {isPositive ? <Plus className="h-4 w-4" /> : <Minus className="h-4 w-4" />}
-          {points}
-        </motion.button>
-    );
-  };
 
-  const TeamCard = ({
-                      team,
-                      teamIndex,
-                      controls
-                    }: {
-    team: Team;
-    teamIndex: number;
-    controls: any;
-  }) => {
-    const isWinning = getWinningTeam(teams) === teamIndex && gamePhase === 'results';
-    const isLeading = getWinningTeam(teams) === teamIndex && gamePhase === 'game';
-
-    const bestScorer = team.players.reduce((max, player) =>
-            player.pointsScored > max.pointsScored ? player : max,
-        { pointsScored: -1 }
-    );
-    return (
-        <motion.div
-            ref={teamIndex === 0 ? teamACardRef : teamBCardRef}
-            animate={controls}
-            className={`w-full glass-effect rounded-xl p-6 shadow-xl border-2 flex flex-col relative ${
-                isWinning ? 'border-yellow-400 animate-pulse' :
-                    isLeading ? 'border-yellow-400/70' : 'border-yellow-400/30'
-            }`}
-            style={{
-              background: `linear-gradient(to bottom right, ${team.color}20, ${team.color}10)`,
-              borderColor: isWinning ? team.color : isLeading ? team.color : `${team.color}50`
-            }}
-        >
-          {isLeading && gamePhase === 'game' && (
-              <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{
-                    scale: [1, 1.3, 1],
-                    rotate: [0, 10, -10, 0],
-                    y: [0, -10, 0]
-                  }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 2,
-                    ease: "easeInOut"
-                  }}
-                  className="absolute -top-6 -right-6 text-5xl"
-                  style={{ color: team.color }}
-              >
-                🏆
-              </motion.div>
-          )}
-
-          {isWinning && (
-              <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-3 -right-3 animate-float"
-              >
-                <Crown className="h-8 w-8" style={{ color: team.color }} />
-              </motion.div>
-          )}
-
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Users className="h-6 w-6" style={{ color: team.color }} />
-              <h2 className="text-2xl font-bold" style={{ color: team.color }}>
-                {team.name}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold" style={{ color: team.color }}>
-              {team.isTeamA ? 'Équipe A' : 'Équipe B'}
-            </span>
-              {gamePhase === 'setup' && (
-                  <button
-                      onClick={() => changeTeamColor(team.id)}
-                      className="w-5 h-5 rounded-full border-2 border-white"
-                      style={{ backgroundColor: team.color }}
-                  />
-              )}
-            </div>
-          </div>
-
-          {/* Regroupement du score et des boutons sur la même ligne */}
-          <div className="flex items-center justify-between my-4">
-            <motion.div
-                animate={{ scale: team.lastScoreChange !== 0 ? [1, 1.1, 1] : 1 }}
-                className={`text-7xl font-bold tabular-nums ${
-                    team.lastScoreChange > 0
-                        ? 'text-green-400'
-                        : team.lastScoreChange < 0
-                            ? 'text-red-400'
-                            : 'text-white'
-                }`}
-            >
-              {team.score}
-            </motion.div>
-
-            {gamePhase === 'game' && (
-                <div className="flex gap-2">
-                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
-                      <ScoreButton
-                          key={`add-${point}`}
-                          points={point}
-                          onClick={() => updateScore(teamIndex, point)}
-                          isPositive={true}
-                      />
-                  ))}
-                  {POINTS_OPTIONS.slice(0, 4).map((point) => (
-                      <ScoreButton
-                          key={`subtract-${point}`}
-                          points={point}
-                          onClick={() => updateScore(teamIndex, -point)}
-                          isPositive={false}
-                      />
-                  ))}
-                </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 mb-4">
-            <div className="space-y-2">
-              <h3 className="font-semibold" style={{ color: team.color }}>
-                Joueurs Actifs
-              </h3>
-              <div className="grid grid-cols-2 gap-2">
-                {team.players.filter(p => p.isActive).map(player => (
-                    <PlayerCard
-                        key={player.id}
-                        player={player}
-                        teamIndex={teamIndex}
-                        isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
-                        onToggle={() => togglePlayerStatus(teamIndex, player.id)}
-                    />
-                ))}
-              </div>
-            </div>
-
-            {/* Correction sur l'affichage des remplaçants */}
-            {team.players.filter((p) => !p.isActive).length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-gray-400 font-semibold">Remplaçants</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {team.players.filter(p => !p.isActive).map(player => (
-                        <PlayerCard
-                            key={player.id}
-                            player={player}
-                            teamIndex={teamIndex}
-                            isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
-                            onToggle={() => togglePlayerStatus(teamIndex, player.id)}
-                        />
-                    ))}
-                  </div>
-                </div>
-            )}
-          </div>
-
-          {gamePhase === 'game' && (
-              <div className="grid grid-cols-2 gap-3 mt-auto">
-                {/* Comme les boutons de score sont maintenant affichés dans le conteneur au-dessus,
-                on peut omettre leur affichage ici si souhaité */}
-              </div>
-          )}
-        </motion.div>
-    );
-  };
 
   const TimerCard = () => {
     return (
