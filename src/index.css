@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+
+/* Effet de texte néon */
+.neon-text {
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Transition fluide */
+* {
+  transition: all 0.3s ease;
+}
+
+/* Scrollbar stylée */
+::-webkit-scrollbar {
+  width: 6px;
+  background: rgba(255,255,255,0.1);
+}
+
+
 @keyframes float {
   0% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }

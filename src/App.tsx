@@ -1,12 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
+  Users,
   Timer,
   Plus,
   Minus,
   Trophy,
-  Users,
-  RotateCcw,
+    User,
+    X,
   Crown,
+    UserX,
+    ChevronDown,
+    ChevronUp,
+    RotateCcw,
   Check,
   Star,
   UserPlus,
@@ -521,6 +526,29 @@ function App() {
     setTimeout(() => comebackText.remove(), 3000);
   };
 
+
+  const TeamScores = ({ teams }: { teams: Team[] }) => {
+    return (
+        <div className="fixed top-4 left-0 right-0 flex justify-center z-30">
+          <div className="flex gap-4 bg-black/50 backdrop-blur-sm p-2 rounded-lg border border-white/10">
+            {teams.map((team, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: team.color }}
+                  />
+                  <span className="font-bold text-white">{team.name}:</span>
+                  <span className="text-xl font-bold" style={{ color: team.color }}>
+              {team.score}
+            </span>
+                </div>
+            ))}
+          </div>
+        </div>
+    );
+  };
+
+
   const updatePlayerScore = (teamIndex: number, playerId: string, points: number) => {
     playButtonClick();
     const now = Date.now();
@@ -532,7 +560,10 @@ function App() {
         const newScore = team.score + points;
         const updatedPlayers = team.players.map(p =>
             p.id === playerId
-                ? { ...p, pointsScored: p.pointsScored + Math.max(0, points) }
+                ? {
+                  ...p,
+                  pointsScored: Math.max(0, p.pointsScored + points) // Assure que les points ne deviennent pas négatifs
+                }
                 : p
         );
 
@@ -985,23 +1016,50 @@ function App() {
   };
 
 
-  const TeamCard = ({
-                      team,
-                      teamIndex,
-                      controls
-                    }: {
-    team: Team;
-    teamIndex: number;
-    controls: any;
-  }) => {
-    const isWinning = getWinningTeam(teams) === teamIndex && gamePhase === 'results';
-    const isLeading = getWinningTeam(teams) === teamIndex && gamePhase === 'game';
+  // Composant TeamCard avec modifications demandées
+  const TeamCard = ({ team, teamIndex, controls }: { team: Team; teamIndex: number; controls: any; }) => {
+    // Pour obtenir des nombres aléatoires dans nos animations
+    const random = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    // État local pour contrôler la vue (entre "players" et "stats")
+    const [activeView, setActiveView] = useState<'players' | 'stats'>('players');
     const [isHovered, setIsHovered] = useState(false);
 
-    const bestScorer = team.players.reduce((max, player) =>
-            player.pointsScored > max.pointsScored ? player : max,
-        { pointsScored: -1 }
-    );
+    // Auto-switch entre vues toutes les 10 secondes
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        setActiveView(prev => (prev === 'players' ? 'stats' : 'players'));
+      }, 10000);
+      return () => clearTimeout(timer);
+    }, [activeView]);
+
+    // On trie les joueurs par points décroissants pour afficher le meilleur en premier
+    const sortedPlayers = useMemo(() => {
+      return [...team.players].sort((a, b) => b.pointsScored - a.pointsScored);
+    }, [team.players]);
+
+    // Fonction pour générer des bulles ou étoiles flottantes
+    const renderBubbles = () => {
+      return [...Array(8)].map((_, i) => (
+          <motion.div
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                backgroundColor: team.color,
+                width: `${random(4, 8)}px`,
+                height: `${random(4, 8)}px`,
+                top: `${random(0, 100)}%`,
+                left: `${random(0, 100)}%`
+              }}
+              animate={{ y: [-10, 10, -10] }}
+              transition={{
+                duration: random(2, 5),
+                repeat: Infinity,
+                ease: 'easeInOut'
+              }}
+          />
+      ));
+    };
 
     return (
         <motion.div
@@ -1010,215 +1068,225 @@ function App() {
             whileHover={{ y: -5 }}
             onHoverStart={() => setIsHovered(true)}
             onHoverEnd={() => setIsHovered(false)}
-            className={`relative w-full rounded-2xl p-6 shadow-2xl overflow-hidden transition-all duration-300 ${
-                isWinning
-                    ? 'ring-4 ring-yellow-400 ring-opacity-80 glow-effect'
-                    : isLeading
-                        ? 'ring-2 ring-yellow-400 ring-opacity-50'
-                        : ''
-            }`}
+            className="relative w-full rounded-2xl overflow-hidden border-4" // Augmentation de la taille de la bordure
             style={{
-              background: `linear-gradient(145deg, ${team.color}08, ${team.color}03)`,
-              backdropFilter: 'blur(10px)',
-              border: `1px solid ${team.color}30`
+              background: `linear-gradient(145deg, ${team.color}30, ${team.color}10)`,
+              boxShadow: isHovered
+                  ? `0 0 25px ${team.color}40`
+                  : '0 5px 15px rgba(0,0,0,0.3)',
+              borderColor: `${team.color}50`,
+              backdropFilter: 'blur(10px)'
             }}
         >
-          {/* Effet de fond animé */}
-          <motion.div
-              animate={{
-                opacity: isHovered ? 0.1 : 0.05,
-                scale: isHovered ? 1.1 : 1
-              }}
-              className="absolute inset-0 z-0"
-              style={{
-                background: `radial-gradient(circle at center, ${team.color}40 0%, transparent 70%)`
-              }}
-          />
+          {/* Bulles flottantes */}
+          {renderBubbles()}
 
-          {/* Effet de particules flottantes */}
-          {[...Array(5)].map((_, i) => (
-              <motion.div
-                  key={i}
-                  animate={{
-                    x: [0, Math.random() * 40 - 20],
-                    y: [0, Math.random() * 40 - 20],
-                    opacity: [0.3, 0.7, 0.3],
-                    transition: {
-                      duration: 3 + Math.random() * 4,
-                      repeat: Infinity,
-                      repeatType: "reverse"
-                    }
-                  }}
-                  className="absolute rounded-full z-0"
-                  style={{
-                    width: `${Math.random() * 10 + 5}px`,
-                    height: `${Math.random() * 10 + 5}px`,
-                    backgroundColor: team.color,
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                    filter: 'blur(1px)'
-                  }}
-              />
-          ))}
-
-          {/* Badge leader/winner */}
-          {(isLeading || isWinning) && (
-            <motion.div
-            initial={{ scale: 0 }}
-            animate={{
-              scale: [1, 1.1, 1],
-              rotate: [0, 5, -5, 0],
-              y: [0, -5, 0]
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="absolute -top-3 -right-3 z-10"
-        >
-          <div className="relative">
-            <div
-                className="absolute inset-0 rounded-full animate-ping"
-                style={{ backgroundColor: team.color, opacity: 0.4 }}
-            />
-            <div
-                className="relative flex items-center justify-center w-12 h-12 rounded-full shadow-lg"
-                style={{ backgroundColor: team.color }}
-            >
-              {isWinning ? (
-                  <Crown className="h-6 w-6 text-white" />
-              ) : (
-                  <Trophy className="h-5 w-5 text-white" />
-              )}
-            </div>
-          </div>
-        </motion.div>
-    )}
-
-    {/* En-tête de la carte */}
-    <div className="relative z-10 flex items-center justify-between mb-6">
-      <div className="flex items-center gap-3">
-        <motion.div
-            animate={{
-              rotate: isHovered ? [0, 10, -10, 0] : 0,
-              transition: { duration: 1 }
-            }}
-            className="flex items-center justify-center w-10 h-10 rounded-lg"
-            style={{ backgroundColor: `${team.color}20` }}
-        >
-          <Users className="h-5 w-5" style={{ color: team.color }} />
-        </motion.div>
-
-        <div>
-          <h2
-              className="text-2xl font-bold tracking-tight"
-              style={{ color: team.color }}
-          >
-            {team.name}
-          </h2>
-          <span className="text-xs font-medium text-white/60">
-              {team.isTeamA ? 'Équipe A' : 'Équipe B'}
-            </span>
-        </div>
-      </div>
-
-      {gamePhase === 'setup' && (
-          <button
-              onClick={() => changeTeamColor(team.id)}
-              className="w-8 h-8 rounded-full border-2 border-white/50 hover:border-white transition-all"
-              style={{ backgroundColor: team.color }}
-          />
-      )}
-    </div>
-
-    {/* Score principal */}
-    <div className="relative z-10 mb-6">
-      <motion.div
-          animate={{
-            scale: team.lastScoreChange !== 0 ? [1, 1.05, 1] : 1,
-            color: team.lastScoreChange > 0
-                ? ['#ffffff', '#4ade80', '#ffffff']
-                : team.lastScoreChange < 0
-                    ? ['#ffffff', '#f87171', '#ffffff']
-                    : '#ffffff'
-          }}
-          transition={{ duration: 0.5 }}
-          className="text-6xl font-bold text-center tabular-nums mb-2"
-      >
-        {team.score}
-      </motion.div>
-
-      {gamePhase === 'game' && (
-          <div className="grid grid-cols-4 gap-2">
-            {[...POINTS_OPTIONS, ...POINTS_OPTIONS].map((point, i) => (
-                <motion.button
-                    key={`${i}-${point}`}
-                    whileHover={{ y: -2, scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => updateScore(teamIndex, i < POINTS_OPTIONS.length ? point : -point)}
-                    className={`flex items-center justify-center gap-1 py-2 rounded-lg font-medium text-sm transition-all ${
-                        i < POINTS_OPTIONS.length
-                            ? 'bg-gradient-to-br from-green-400 to-green-500 text-white'
-                            : 'bg-gradient-to-br from-red-400 to-red-500 text-white'
-                    }`}
+          {/* En-tête avec navigation entre vues */}
+          {/* En-tête avec le score et navigation entre vues */}
+          <div className="relative z-10 p-4 pb-0 flex justify-between items-start">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-3">
+                <motion.div
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => gamePhase === 'setup' && changeTeamColor(team.id)}
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{
+                      background: `linear-gradient(135deg, ${team.color}20, ${team.color}10)`,
+                      border: `1px solid ${team.color}30`
+                    }}
                 >
-                  {i < POINTS_OPTIONS.length ? (
-                      <Plus className="h-3 w-3" />
-                  ) : (
-                      <Minus className="h-3 w-3" />
-                  )}
-                  {point}
-                </motion.button>
-            ))}
-          </div>
-      )}
-    </div>
-
-    {/* Liste des joueurs */}
-          {/* Liste des joueurs */}
-          <div className="relative z-10 space-y-4">
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: team.color }}>
-                Joueurs {team.players.filter(p => p.isActive).length > 0 && `(${team.players.filter(p => p.isActive).length})`}
-              </h3>
-              <div className="grid grid-cols-2 gap-2"> {/* Modifié de grid-cols-1 à grid-cols-2 */}
-                {team.players.filter(p => p.isActive).map(player => (
-                    <PlayerCard
-                        key={player.id}
-                        player={player}
-                        teamIndex={teamIndex}
-                        isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
-                        onToggle={() => togglePlayerStatus(teamIndex, player.id)}
-                    />
-                ))}
+                  <Users className="h-5 w-5" style={{ color: team.color }} />
+                </motion.div>
+                <div>
+                  <motion.h2
+                      className="text-2xl font-bold truncate max-w-[180px]"
+                      style={{
+                        color: team.color,
+                        textShadow: `0 0 10px ${team.color}30`
+                      }}
+                  >
+                    {team.name}
+                  </motion.h2>
+                  <span className="text-xs font-medium text-white/60">
+                    {team.isTeamA ? 'Équipe A' : 'Équipe B'}
+                  </span>
+                </div>
+              </div>
+              {/* Affichage du score de l'équipe */}
+              <div className="ml-2 flex items-center gap-2">
+                <span className="text-lg font-bold text-white">Score:</span>
+                <span
+                    className="text-3xl font-bold"
+                    style={{ color: team.color }}
+                >
+                  {team.score}
+                </span>
               </div>
             </div>
 
-            {team.players.filter(p => !p.isActive).length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-white/50">
-                    Remplaçants ({team.players.filter(p => !p.isActive).length})
-                  </h3>
-                  <div className="grid grid-cols-2 gap-2"> {/* Modifié de grid-cols-1 à grid-cols-2 */}
-                    {team.players.filter(p => !p.isActive).map(player => (
-                        <PlayerCard
-                            key={player.id}
-                            player={player}
-                            teamIndex={teamIndex}
-                            isBestScorer={player.id === bestScorer.id && bestScorer.pointsScored > 0}
-                            onToggle={() => togglePlayerStatus(teamIndex, player.id)}
-                        />
-                    ))}
+            {/* Boutons de navigation entre "Joueurs" et "Statistiques" */}
+            <div className="flex space-x-2">
+              <button
+                  onClick={() => setActiveView('players')}
+                  className={`px-3 py-1 flex items-center gap-1 text-sm font-medium ${
+                      activeView === 'players' ? 'text-white' : 'text-white/60'
+                  }`}
+              >
+                <ChevronDown className="h-4 w-4" />
+                Joueurs
+              </button>
+              <button
+                  onClick={() => setActiveView('stats')}
+                  className={`px-3 py-1 flex items-center gap-1 text-sm font-medium ${
+                      activeView === 'stats' ? 'text-white' : 'text-white/60'
+                  }`}
+              >
+                <ChevronUp className="h-4 w-4" />
+                Stats
+              </button>
+            </div>
+          </div>
+
+          {/* Contenu principal */}
+          {/* Contenu principal - partie modifiée pour la vue Stats */}
+          <div className="relative z-10 p-5 pt-3">
+            <AnimatePresence mode="wait">
+              {activeView === 'players' ? (
+                  <motion.div
+                      key="players"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-3"
+                  >
+                    {/* Affichage de la liste des joueurs triée – affichage en grille responsive */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {sortedPlayers.map(player => (
+                          <PlayerCard
+                              key={player.id}
+                              player={player}
+                              teamIndex={teamIndex}
+                              isBestScorer={sortedPlayers[0]?.id === player.id && player.pointsScored > 0}
+                              onToggle={() => togglePlayerStatus(teamIndex, player.id)}
+                          />
+                      ))}
+                    </div>
+                  </motion.div>
+                  ) : (
+                  <motion.div
+                      key="stats"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="space-y-4"
+                  >
+                    {/* Nouvelle carte du meilleur marqueur */}
+                    <div className="bg-gradient-to-br from-yellow-400 to-yellow-600 p-4 rounded-xl shadow-lg border-2 border-yellow-300">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-xs font-semibold text-yellow-900">⭐ MEILLEUR MARQUEUR</div>
+                        {sortedPlayers[0]?.pointsScored > 0 && (
+                            <div className="text-xs font-bold bg-yellow-800/30 text-yellow-900 px-2 py-1 rounded-full">
+                              {sortedPlayers[0].pointsScored} PTS
+                            </div>
+                        )}
+                      </div>
+                      <div className="text-xl font-bold text-yellow-900 truncate">
+                        {sortedPlayers[0]?.pointsScored > 0 ? sortedPlayers[0].name : 'Aucun'}
+                      </div>
+                      {sortedPlayers[0]?.pointsScored > 0 && (
+                          <div className="mt-2 flex gap-1">
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => updatePlayerScore(teamIndex, sortedPlayers[0].id, 10)}
+                                className="w-8 h-8 bg-yellow-700 text-yellow-100 rounded flex items-center justify-center text-lg font-bold"
+                            >
+                              +
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => updatePlayerScore(teamIndex, sortedPlayers[0].id, -10)}
+                                className="w-8 h-8 bg-yellow-800/50 text-yellow-100 rounded flex items-center justify-center text-lg font-bold"
+                            >
+                              -
+                            </motion.button>
+                          </div>
+                      )}
+                    </div>
+
+                    {/* Nouvelle carte des derniers gains avec boutons d'équipe */}
+                    <div className="bg-gradient-to-br from-blue-500 to-blue-700 p-4 rounded-xl shadow-lg border-2 border-blue-400">
+                      <div className="flex justify-between items-center mb-2">
+                        <div className="text-xs font-semibold text-blue-100">📈 DERNIER GAIN</div>
+                        <div className={`text-xs font-bold ${team.lastScoreChange >= 0 ? 'bg-green-500/30 text-green-100' : 'bg-red-500/30 text-red-100'} px-2 py-1 rounded-full`}>
+                          {team.lastScoreChange >= 0 ? '+' : ''}{team.lastScoreChange}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mt-3">
+                        {[10, 20, -10, -20].map((points) => (
+                            <motion.button
+                                key={points}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => updateScore(teamIndex, points)}
+                                className={`h-10 rounded-lg flex items-center justify-center text-lg font-bold ${
+                                    points > 0
+                                        ? 'bg-green-500/90 text-white'
+                                        : 'bg-red-500/90 text-white'
+                                }`}
+                            >
+                              {points > 0 ? '+' : ''}{points}
+                            </motion.button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Statistiques supplémentaires */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                        <div className="text-xs text-white/60 mb-1">Total des joueurs</div>
+                        <div className="text-xl font-bold" style={{ color: team.color }}>
+                          {team.players.length}
+                        </div>
+                      </div>
+                      <div className="bg-white/5 p-3 rounded-lg border border-white/10">
+                        <div className="text-xs text-white/60 mb-1">Joueurs actifs</div>
+                        <div className="text-xl font-bold text-green-400">
+                          {team.players.filter(p => p.isActive).length}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+            </AnimatePresence>
+          </div>
+
+          {/* Badge de victoire animé (optionnel) */}
+          {getWinningTeam(teams) === teamIndex && (
+              <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1, rotate: [0, 5, -5, 0] }}
+                  transition={{ duration: 0.5 }}
+                  className="absolute top-4 right-4 z-20"
+              >
+                <div className="relative">
+                  <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 rounded-full border-2 border-yellow-400 border-t-transparent"
+                  />
+                  <div className="w-10 h-10 rounded-full bg-yellow-400 flex items-center justify-center">
+                    <Trophy className="h-5 w-5 text-blue-900" />
                   </div>
                 </div>
-            )}
-          </div>
-  </motion.div>
-  );
+              </motion.div>
+          )}
+        </motion.div>
+    );
   };
-
 // Et voici le PlayerCard amélioré qui va avec :
+  // Composant PlayerCard (conserve les boutons pour ajouter/soustraire des points)
   const PlayerCard = ({ player, teamIndex, isBestScorer, onToggle }: {
     player: Player;
     teamIndex: number;
@@ -1237,7 +1305,7 @@ function App() {
         <motion.div
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.98 }}
-            className={`px-3 py-2 rounded-lg flex items-center justify-between ${
+            className={`p-2 rounded-lg flex flex-col gap-1 ${
                 player.isActive
                     ? isBestScorer
                         ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 border-2 border-yellow-600'
@@ -1245,60 +1313,69 @@ function App() {
                     : 'bg-gray-400/20 border-2 border-gray-400/50'
             }`}
         >
-        <span className={`${isBestScorer ? 'font-bold text-yellow-900' : 'text-white'}`}>
-          {player.name}
-        </span>
+          {/* Ligne 1: Nom du joueur */}
+          <div className="flex-1 min-w-0">
+            <p className={`text-center font-medium truncate ${
+                isBestScorer ? 'text-yellow-900' : 'text-white'
+            }`}>
+              {player.name}
+            </p>
+          </div>
 
-          <div className="flex items-center gap-2">
+          {/* Ligne 2: Points et boutons +/- */}
+          <div className="flex items-center justify-between gap-2 w-full">
+            {/* Points */}
             <motion.span
-                className={`text-xs px-2 py-1 rounded ${
-                    isBestScorer
-                        ? 'bg-yellow-600 text-white'
-                        : 'bg-green-500/50 text-white'
+                className={`text-sm px-3 py-1 rounded-lg whitespace-nowrap text-center flex-1 ${
+                    isBestScorer ? 'bg-yellow-600 text-white' : 'bg-green-500/70 text-white'
                 }`}
                 animate={{
-                  scale: isScoring ? [1, 1.5, 1] : 1,
+                  scale: isScoring ? [1, 1.2, 1] : 1,
                   backgroundColor: isScoring
-                      ? ['#FFD700', team.color, '#FFD700']
-                      : isBestScorer ? '#D4AF37' : '#10B98180'
+                      ? ['#FFD700', teams[teamIndex].color, '#FFD700']
+                      : isBestScorer ? '#D4AF37' : '#10B981B0'
                 }}
             >
               {player.pointsScored} pts
             </motion.span>
 
+            {/* Boutons +10/-10 */}
             {player.isActive && (
                 <div className="flex gap-1">
                   <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddPoints(10);
                       }}
-                      className="text-xs bg-yellow-400 text-blue-900 px-1 rounded"
+                      className="text-xs bg-yellow-400 text-blue-900 px-2 py-1 rounded whitespace-nowrap"
                   >
                     +10
                   </motion.button>
                   <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAddPoints(-10);
                       }}
-                      className="text-xs bg-red-400 text-white px-1 rounded"
+                      className="text-xs bg-red-400 text-white px-2 py-1 rounded whitespace-nowrap"
                   >
                     -10
                   </motion.button>
                 </div>
             )}
+          </div>
 
+          {/* Ligne 3: Statut Actif/Remplaçant */}
+          <div className="flex justify-center w-full">
             <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggle();
                 }}
-                className={`text-sm px-2 py-1 rounded ${
+                className={`text-xs px-3 py-1 rounded-full w-full max-w-[100px] ${
                     player.isActive
                         ? isBestScorer
                             ? 'bg-yellow-600 text-white'
@@ -1306,7 +1383,7 @@ function App() {
                         : 'bg-gray-500 text-white'
                 }`}
             >
-              {player.isActive ? 'Actif' : 'Rempl.'}
+              {player.isActive ? '⭐ Actif' : '🔄 Remplaçant'}
             </button>
           </div>
         </motion.div>
@@ -1471,9 +1548,9 @@ function App() {
         </div>
     );
   }
-
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-900 gradient-animate p-4 flex flex-col">
+        <TeamScores teams={teams} />
         <AnimatePresence>{showAlert && <MilestoneAlert message={showAlert} />}</AnimatePresence>
         <div className="flex justify-between items-center mb-4">
           <motion.h1 initial={{ y: -20 }} animate={{ y: 0 }} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200 flex items-center gap-3">
