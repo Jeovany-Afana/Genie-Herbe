@@ -1,13 +1,12 @@
-// src/components/RubriqueDisplay.tsx
 import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { db } from "../firebase";
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, ChevronRight, Loader2, Star, AlertTriangle, Sparkles } from "lucide-react";
-import confetti from 'canvas-confetti';
+import confetti from "canvas-confetti";
 
-// Import du composant dédié pour les questions d'identification
-import { IdentificationQuestion } from './IdentificationQuestion';
+// Import du composant IdentificationQuestion
+import { IdentificationQuestion } from "./IdentificationQuestion";
 
 export interface Answer {
     id: string;
@@ -33,7 +32,17 @@ export interface Rubrique {
     questions: Question[];
 }
 
-const RubriqueDisplay: React.FC = () => {
+export interface Team {
+    id: string;
+    name: string;
+    color: string;
+}
+
+export interface RubriqueDisplayProps {
+    teams: Team[];
+}
+
+const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
     const [rubriques, setRubriques] = useState<Rubrique[]>([]);
     const [currentRubriqueIndex, setCurrentRubriqueIndex] = useState(0);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
@@ -49,7 +58,7 @@ const RubriqueDisplay: React.FC = () => {
                 const rubriquesRef = collection(db, "rubriques");
                 const q = query(rubriquesRef, orderBy("createdAt", "asc"));
                 const querySnapshot = await getDocs(q);
-                const data = querySnapshot.docs.map(doc => ({
+                const data = querySnapshot.docs.map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
                 })) as Rubrique[];
@@ -69,7 +78,7 @@ const RubriqueDisplay: React.FC = () => {
             particleCount: 100,
             spread: 70,
             origin: { y: 0.6 },
-            colors: ['#ffde59', '#ff914d', '#ff5757', '#8c52ff']
+            colors: ["#ffde59", "#ff914d", "#ff5757", "#8c52ff"],
         });
     };
 
@@ -81,20 +90,22 @@ const RubriqueDisplay: React.FC = () => {
 
     const handleRevealAnswers = () => {
         setShowAnswers(true);
+        const currentQuestion = rubriques[currentRubriqueIndex].questions[currentQuestionIndex];
         const correctAnswers = currentQuestion.answers.filter(a => a.isCorrect);
         if (correctAnswers.length > 0) {
             confetti({
                 particleCount: 50 * correctAnswers.length,
                 spread: 70,
                 origin: { y: 0.6 },
-                colors: ['#ffde59', '#ff914d']
+                colors: ["#ffde59", "#ff914d"],
             });
         }
     };
 
     const handleNextQuestion = async () => {
         setIsTransitioning(true);
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 600));
+        const currentRubrique = rubriques[currentRubriqueIndex];
 
         if (currentQuestionIndex < currentRubrique.questions.length - 1) {
             setCurrentQuestionIndex(currentQuestionIndex + 1);
@@ -102,17 +113,14 @@ const RubriqueDisplay: React.FC = () => {
         } else {
             if (currentRubriqueIndex < rubriques.length - 1) {
                 setCurrentRubriqueIndex(currentRubriqueIndex + 1);
-                setCurrentQuestionIndex(-1);
-                setShowQuestion(false);
-                setShowAnswers(false);
             } else {
                 setCurrentRubriqueIndex(0);
-                setCurrentQuestionIndex(-1);
-                setShowQuestion(false);
-                setShowAnswers(false);
             }
+            // Réinitialiser l'état et afficher à nouveau le bouton pour démarrer la rubrique
+            setCurrentQuestionIndex(-1);
+            setShowQuestion(false);
+            setShowAnswers(false);
         }
-
         setIsTransitioning(false);
         triggerConfetti();
     };
@@ -137,13 +145,22 @@ const RubriqueDisplay: React.FC = () => {
     const currentRubrique = rubriques[currentRubriqueIndex];
     const currentQuestion = currentRubrique.questions[currentQuestionIndex];
 
+    // Définition d'un booléen pour déterminer si la question courante est d'identification
+    const isIdentification =
+        rubriques.length > 0 &&
+        currentQuestionIndex >= 0 &&
+        currentRubrique.questions[currentQuestionIndex]?.type === "identification";
+
     return (
         <motion.div
-            className="glass-effect rounded-2xl p-6 border-2 border-yellow-400/30 w-full max-w-2xl mx-auto relative overflow-hidden"
+            className={
+                isIdentification
+                    ? "fixed inset-0 z-50 overflow-y-auto"  // Mode plein écran pour l’identification
+                    : "glass-effect rounded-2xl p-6 border-2 border-yellow-400/30 w-full max-w-2xl mx-auto relative overflow-hidden"
+            }
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
         >
-            {/* Effet de particules flottantes */}
             <AnimatePresence>
                 {isTransitioning && (
                     <>
@@ -156,18 +173,18 @@ const RubriqueDisplay: React.FC = () => {
                                     scale: [0, 1, 0],
                                     x: [0, (Math.random() - 0.5) * 200],
                                     y: [0, (Math.random() - 0.5) * 200],
-                                    rotate: [0, Math.random() * 360]
+                                    rotate: [0, Math.random() * 360],
                                 }}
                                 exit={{ opacity: 0 }}
                                 transition={{
-                                    duration: 1.5,
-                                    delay: i * 0.05,
-                                    ease: "easeOut"
+                                    duration: 1.2,
+                                    delay: i * 0.04,
+                                    ease: "easeOut",
                                 }}
                                 className="absolute text-yellow-400"
                                 style={{
                                     left: `${50 + (Math.random() - 0.5) * 20}%`,
-                                    top: `${50 + (Math.random() - 0.5) * 20}%`
+                                    top: `${50 + (Math.random() - 0.5) * 20}%`,
                                 }}
                             >
                                 <Sparkles size={16} />
@@ -177,7 +194,7 @@ const RubriqueDisplay: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Rubrique Header avec animation améliorée */}
+            {/* Header de la rubrique */}
             <motion.div
                 className="flex items-start justify-between mb-4"
                 key={`rubrique-${currentRubriqueIndex}`}
@@ -217,6 +234,7 @@ const RubriqueDisplay: React.FC = () => {
 
             <AnimatePresence mode="wait">
                 {!showQuestion ? (
+                    // Bouton "Commencer la rubrique"
                     <motion.div
                         key="initial"
                         initial={{ opacity: 0, scale: 0.8 }}
@@ -254,44 +272,32 @@ const RubriqueDisplay: React.FC = () => {
                         exit={{ opacity: 0, y: -20 }}
                         className="space-y-6"
                     >
-                        {/* Pour les questions classiques */}
-                        {currentQuestion && currentQuestion.type !== 'identification' && (
+                        {currentQuestion && currentQuestion.type === "identification" ? (
+                            <IdentificationQuestion
+                                question={currentQuestion}
+                                teams={teams} // On transmet ici la liste des teams non vide
+                                onFinish={handleNextQuestion}
+                            />
+                        ) : (
                             <>
+                                {/* Contenu des questions classiques */}
                                 <motion.div
                                     className="glass-effect-inner p-4 rounded-lg border border-yellow-400/20 relative overflow-hidden"
                                     initial={{ scale: 0.9, opacity: 0 }}
-                                    animate={{
-                                        scale: 1,
-                                        opacity: 1,
-                                        transition: { type: "spring", stiffness: 400, damping: 20 }
-                                    }}
+                                    animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 400, damping: 20 } }}
                                     whileHover={{ y: -3 }}
                                 >
                                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-purple-500" />
                                     <div className="flex justify-between items-start">
                                         <h3 className="text-xl font-semibold text-yellow-400">
-                                            <motion.span
-                                                className="inline-block"
-                                                animate={{ rotate: [0, 5, -5, 0] }}
-                                                transition={{ repeat: Infinity, duration: 2 }}
-                                            >
-                                                ✨
-                                            </motion.span> Question {currentQuestionIndex + 1}/{currentRubrique.questions.length}
+                                            Question {currentQuestionIndex + 1}/{currentRubrique.questions.length}
                                         </h3>
-                                        <motion.span
-                                            className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full"
-                                            initial={{ scale: 0 }}
-                                            animate={{ scale: 1 }}
-                                            transition={{ delay: 0.2 }}
-                                        >
-                                            {currentQuestion.type === 'single' ? 'Réponse unique' : 'Multiples réponses'}
-                                        </motion.span>
                                     </div>
                                     <motion.p
                                         className="text-white mt-2 text-lg"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.3 }}
+                                        transition={{ delay: 0.2 }}
                                     >
                                         {currentQuestion.text}
                                     </motion.p>
@@ -300,9 +306,9 @@ const RubriqueDisplay: React.FC = () => {
                                             className="text-sm text-yellow-400/70 mt-2 flex items-center"
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
-                                            transition={{ delay: 0.4 }}
+                                            transition={{ delay: 0.3 }}
                                         >
-                                            <span className="mr-1">💡</span> Indice: {currentQuestion.hint}
+                                            💡 Indice: {currentQuestion.hint}
                                         </motion.p>
                                     )}
                                 </motion.div>
@@ -311,33 +317,15 @@ const RubriqueDisplay: React.FC = () => {
                                     {!showAnswers ? (
                                         <motion.button
                                             key="show-answers-btn"
-                                            whileHover={{
-                                                scale: 1.02,
-                                                background: ["linear-gradient(to right, #3b82f6, #6366f1)", "linear-gradient(to right, #6366f1, #3b82f6)"],
-                                                transition: { duration: 1, repeat: Infinity, repeatType: "reverse" }
-                                            }}
+                                            whileHover={{ scale: 1.02 }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={handleRevealAnswers}
-                                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-xl font-bold text-lg relative overflow-hidden"
+                                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-xl font-bold text-lg"
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0 }}
                                         >
-                                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                                <motion.div
-                                                    animate={{ rotate: 360 }}
-                                                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                                >
-                                                    🔍
-                                                </motion.div>
-                                                Révéler les réponses
-                                            </span>
-                                            <motion.div
-                                                className="absolute inset-0 bg-white/20"
-                                                initial={{ x: "-100%" }}
-                                                animate={{ x: "100%" }}
-                                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                            />
+                                            Révéler les réponses
                                         </motion.button>
                                     ) : (
                                         <motion.div
@@ -345,71 +333,37 @@ const RubriqueDisplay: React.FC = () => {
                                             initial={{ opacity: 0, height: 0 }}
                                             animate={{
                                                 opacity: 1,
-                                                height: 'auto',
-                                                transition: {
-                                                    type: 'spring',
-                                                    damping: 20,
-                                                    stiffness: 200
-                                                }
+                                                height: "auto",
+                                                transition: { type: "spring", damping: 20, stiffness: 200 },
                                             }}
                                             className="space-y-3 overflow-hidden"
                                         >
-                                            <motion.h4
-                                                className="text-lg font-semibold text-yellow-400 flex items-center gap-2"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                transition={{ delay: 0.2 }}
-                                            >
-                                                <motion.div
-                                                    animate={{ scale: [1, 1.2, 1] }}
-                                                    transition={{ repeat: Infinity, duration: 2 }}
-                                                >
-                                                    🎯
-                                                </motion.div>
-                                                Réponses :
-                                            </motion.h4>
+                                            <h4 className="text-lg font-semibold text-yellow-400">Réponses :</h4>
                                             <div className="grid grid-cols-1 gap-2">
-                                                {currentQuestion.answers.map((answer, index) => (
+                                                {currentQuestion.answers.map((answer) => (
                                                     <motion.div
                                                         key={answer.id}
                                                         initial={{ opacity: 0, x: -20 }}
                                                         animate={{
                                                             opacity: 1,
                                                             x: 0,
-                                                            transition: {
-                                                                delay: index * 0.1 + 0.3,
-                                                                type: "spring",
-                                                                stiffness: 300
-                                                            }
+                                                            transition: { type: "spring", stiffness: 300 },
                                                         }}
                                                         whileHover={{ scale: 1.02 }}
-                                                        className={`p-3 rounded-lg border-2 ${answer.isCorrect
-                                                            ? 'border-green-500 bg-green-500/10'
-                                                            : 'border-red-500 bg-red-500/10'} relative overflow-hidden`}
+                                                        className={`p-3 rounded-lg border-2 ${
+                                                            answer.isCorrect
+                                                                ? "border-green-500 bg-green-500/10"
+                                                                : "border-red-500 bg-red-500/10"
+                                                        }`}
                                                     >
-                                                        <div className="absolute inset-0 bg-white/5" />
-                                                        <div className="flex items-start gap-3 relative z-10">
-                                                            <motion.div
-                                                                className={`mt-1 h-5 w-5 rounded-full flex items-center justify-center 
-                                                                    ${answer.isCorrect ? 'bg-green-500' : 'bg-red-500'}`}
-                                                                initial={{ scale: 0 }}
-                                                                animate={{ scale: 1 }}
-                                                                transition={{ delay: index * 0.1 + 0.4 }}
-                                                            >
-                                                                <Check className="h-3 w-3 text-white" />
-                                                            </motion.div>
+                                                        <div className="flex items-start gap-2">
+                                                            {answer.isCorrect ? (
+                                                                <Check className="h-5 w-5 text-green-400" />
+                                                            ) : (
+                                                                <span className="h-5 w-5 text-red-400">✕</span>
+                                                            )}
                                                             <p className="text-white">{answer.text}</p>
                                                         </div>
-                                                        {answer.isCorrect && (
-                                                            <motion.div
-                                                                className="absolute top-0 right-0 text-yellow-400"
-                                                                initial={{ scale: 0 }}
-                                                                animate={{ scale: 1 }}
-                                                                transition={{ delay: index * 0.1 + 0.5 }}
-                                                            >
-                                                                ⭐
-                                                            </motion.div>
-                                                        )}
                                                     </motion.div>
                                                 ))}
                                             </div>
@@ -419,26 +373,17 @@ const RubriqueDisplay: React.FC = () => {
                             </>
                         )}
 
-                        {/* Pour les questions d'identification */}
-                        {currentQuestion && currentQuestion.type === 'identification' && (
-                            <IdentificationQuestion question={currentQuestion} />
-                        )}
-
                         <motion.button
-                            whileHover={{
-                                scale: 1.02,
-                                background: ["linear-gradient(to right, #f59e0b, #f97316)", "linear-gradient(to right, #f97316, #f59e0b)"],
-                                transition: { duration: 1, repeat: Infinity, repeatType: "reverse" }
-                            }}
+                            whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleNextQuestion}
                             className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 py-3 rounded-xl font-bold text-lg mt-4 relative overflow-hidden"
                         >
-                            <span className="relative z-10 flex items-center justify-center gap-2">
-                                {currentQuestionIndex < currentRubrique.questions.length - 1
-                                    ? "Question suivante →"
-                                    : "Rubrique suivante →"}
-                            </span>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                {currentQuestionIndex < currentRubrique.questions.length - 1
+                    ? "Question suivante →"
+                    : "Rubrique suivante →"}
+              </span>
                             <motion.div
                                 className="absolute inset-0 bg-white/20"
                                 initial={{ x: "-100%" }}

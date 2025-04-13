@@ -91,6 +91,7 @@ function App() {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'history'>('game');
+  const [isIdentificationFullScreen, setIsIdentificationFullScreen] = useState(false);
 
   const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
 
@@ -1566,7 +1567,13 @@ function App() {
             </button>
           </div>
         </div>
-        <RubriqueDisplay />
+        {isIdentificationFullScreen ? (
+            <div className="fixed inset-0 z-50">
+              <RubriqueDisplay onIdentification={setIsIdentificationFullScreen} teams={teams} />
+            </div>
+        ) : (
+            <RubriqueDisplay onIdentification={setIsIdentificationFullScreen} teams={teams} />
+        )}
         <AnimatePresence>
           {showSettings && (
               <motion.div
