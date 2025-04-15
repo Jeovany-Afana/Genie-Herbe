@@ -104,7 +104,8 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
 
     const handleNextQuestion = async () => {
         setIsTransitioning(true);
-        await new Promise(resolve => setTimeout(resolve, 600));
+        triggerConfetti();
+        await new Promise(resolve => setTimeout(resolve, 800));
         const currentRubrique = rubriques[currentRubriqueIndex];
 
         if (currentQuestionIndex < currentRubrique.questions.length - 1) {
@@ -161,24 +162,36 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
         >
+            {/* Nouvel effet de particules amélioré */}
             <AnimatePresence>
                 {isTransitioning && (
-                    <>
-                        {[...Array(20)].map((_, i) => (
+                    <motion.div
+                        className="absolute inset-0 z-50 pointer-events-none"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        {[...Array(30)].map((_, i) => (
                             <motion.div
                                 key={i}
-                                initial={{ opacity: 0, scale: 0 }}
+                                initial={{
+                                    opacity: 0,
+                                    scale: 0,
+                                    x: 0,
+                                    y: 0,
+                                    rotate: 0
+                                }}
                                 animate={{
                                     opacity: [0, 1, 0],
-                                    scale: [0, 1, 0],
-                                    x: [0, (Math.random() - 0.5) * 200],
-                                    y: [0, (Math.random() - 0.5) * 200],
-                                    rotate: [0, Math.random() * 360],
+                                    scale: [0, 1.5, 0],
+                                    x: [0, (Math.random() - 0.5) * 300],
+                                    y: [0, (Math.random() - 0.5) * 300],
+                                    rotate: [0, Math.random() * 720],
                                 }}
                                 exit={{ opacity: 0 }}
                                 transition={{
-                                    duration: 1.2,
-                                    delay: i * 0.04,
+                                    duration: 1.5,
+                                    delay: i * 0.03,
                                     ease: "easeOut",
                                 }}
                                 className="absolute text-yellow-400"
@@ -187,10 +200,21 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                                     top: `${50 + (Math.random() - 0.5) * 20}%`,
                                 }}
                             >
-                                <Sparkles size={16} />
+                                <Sparkles size={24} />
                             </motion.div>
                         ))}
-                    </>
+
+                        {/* Effet de flash */}
+                        <motion.div
+                            className="absolute inset-0 bg-white"
+                            initial={{ opacity: 0 }}
+                            animate={{
+                                opacity: [0, 0.7, 0],
+                                scale: [1, 1.2, 1]
+                            }}
+                            transition={{ duration: 0.8 }}
+                        />
+                    </motion.div>
                 )}
             </AnimatePresence>
 
@@ -198,25 +222,53 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
             <motion.div
                 className="flex items-start justify-between mb-4"
                 key={`rubrique-${currentRubriqueIndex}`}
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                initial={{ opacity: 0, y: -50, rotateX: 90 }}
+                animate={{
+                    opacity: 1,
+                    y: 0,
+                    rotateX: 0,
+                    transition: {
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 20,
+                        delay: isTransitioning ? 0.5 : 0
+                    }
+                }}
+                exit={{ opacity: 0, y: 50, rotateX: -90 }}
             >
                 <div>
                     <h2 className="text-2xl font-bold text-yellow-400 flex items-center gap-2">
                         <motion.div
-                            animate={{ rotate: [0, 20, -20, 0] }}
-                            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                            animate={{
+                                rotate: [0, 20, -20, 0],
+                                scale: [1, 1.2, 1],
+                                transition: {
+                                    repeat: Infinity,
+                                    duration: 3,
+                                    ease: "easeInOut"
+                                }
+                            }}
                         >
                             <Star className="h-6 w-6" />
                         </motion.div>
                         {currentRubrique.title}
+                        <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: 0.3, type: "spring" }}
+                            className="ml-2 text-xs bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded-full"
+                        >
+                            NEW!
+                        </motion.span>
                     </h2>
                     <motion.p
                         className="text-white/80 mt-1"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{
+                            opacity: 1,
+                            x: 0,
+                            transition: { delay: 0.4 }
+                        }}
                     >
                         {currentRubrique.description}
                     </motion.p>
@@ -224,8 +276,14 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                 <motion.span
                     className="text-xs bg-yellow-400/20 text-yellow-400 px-2 py-1 rounded-full flex items-center"
                     initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", delay: 0.3 }}
+                    animate={{
+                        scale: 1,
+                        transition: {
+                            type: "spring",
+                            delay: 0.5,
+                            stiffness: 500
+                        }
+                    }}
                 >
                     <Sparkles className="h-3 w-3 mr-1" />
                     {currentRubriqueIndex + 1}/{rubriques.length}
@@ -234,24 +292,48 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
 
             <AnimatePresence mode="wait">
                 {!showQuestion ? (
-                    // Bouton "Commencer la rubrique"
+                    // Bouton "Commencer la rubrique" avec animation améliorée
                     <motion.div
                         key="initial"
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{
+                            opacity: 1,
+                            scale: 1,
+                            transition: {
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 10
+                            }
+                        }}
+                        exit={{ opacity: 0, scale: 0.5 }}
                         className="flex justify-center items-center h-32"
                     >
                         <motion.button
-                            whileHover={{ scale: 1.05 }}
+                            whileHover={{
+                                scale: 1.1,
+                                boxShadow: "0 0 20px rgba(255, 222, 89, 0.5)"
+                            }}
                             whileTap={{ scale: 0.95 }}
                             onClick={handleRevealQuestion}
                             className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 py-3 px-6 rounded-xl font-bold text-lg flex items-center gap-2 relative overflow-hidden"
+                            initial={{ rotate: -5 }}
+                            animate={{
+                                rotate: [0, -5, 5, 0],
+                                transition: {
+                                    repeat: Infinity,
+                                    duration: 3
+                                }
+                            }}
                         >
                             <motion.span
                                 initial={{ x: -20 }}
-                                animate={{ x: 0 }}
-                                transition={{ type: "spring", stiffness: 300 }}
+                                animate={{
+                                    x: 0,
+                                    transition: {
+                                        type: "spring",
+                                        stiffness: 500
+                                    }
+                                }}
                             >
                                 <ChevronRight className="h-6 w-6" />
                             </motion.span>
@@ -259,35 +341,75 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                             <motion.div
                                 className="absolute inset-0 bg-white/20"
                                 initial={{ x: "-100%" }}
-                                animate={{ x: "100%" }}
-                                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                                animate={{
+                                    x: "100%",
+                                    transition: {
+                                        duration: 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut"
+                                    }
+                                }}
+                            />
+                            {/* Effet de halo pulsé */}
+                            <motion.div
+                                className="absolute inset-0 rounded-xl border-2 border-yellow-400/50 pointer-events-none"
+                                initial={{ scale: 1, opacity: 0 }}
+                                animate={{
+                                    scale: 1.5,
+                                    opacity: [0, 0.4, 0],
+                                    transition: {
+                                        duration: 2,
+                                        repeat: Infinity
+                                    }
+                                }}
                             />
                         </motion.button>
                     </motion.div>
                 ) : (
                     <motion.div
                         key="question"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{
+                            opacity: 1,
+                            y: 0,
+                            transition: {
+                                type: "spring",
+                                stiffness: 300,
+                                damping: 20,
+                                delay: isTransitioning ? 0.5 : 0
+                            }
+                        }}
+                        exit={{ opacity: 0, y: -50 }}
                         className="space-y-6"
                     >
                         {currentQuestion && currentQuestion.type === "identification" ? (
                             <IdentificationQuestion
                                 question={currentQuestion}
-                                teams={teams} // On transmet ici la liste des teams non vide
+                                teams={teams}
                                 onFinish={handleNextQuestion}
                             />
                         ) : (
                             <>
-                                {/* Contenu des questions classiques */}
+                                {/* Contenu des questions avec animations améliorées */}
                                 <motion.div
                                     className="glass-effect-inner p-4 rounded-lg border border-yellow-400/20 relative overflow-hidden"
                                     initial={{ scale: 0.9, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1, transition: { type: "spring", stiffness: 400, damping: 20 } }}
-                                    whileHover={{ y: -3 }}
+                                    animate={{
+                                        scale: 1,
+                                        opacity: 1,
+                                        transition: {
+                                            type: "spring",
+                                            stiffness: 400,
+                                            damping: 20,
+                                            delay: isTransitioning ? 0.6 : 0
+                                        }
+                                    }}
+                                    whileHover={{
+                                        y: -5,
+                                        boxShadow: "0 10px 20px rgba(255, 222, 89, 0.2)"
+                                    }}
                                 >
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 to-purple-500" />
+                                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-400 via-purple-500 to-pink-500 animate-gradient-x" />
                                     <div className="flex justify-between items-start">
                                         <h3 className="text-xl font-semibold text-yellow-400">
                                             Question {currentQuestionIndex + 1}/{currentRubrique.questions.length}
@@ -296,8 +418,12 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                                     <motion.p
                                         className="text-white mt-2 text-lg"
                                         initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.2 }}
+                                        animate={{
+                                            opacity: 1,
+                                            transition: {
+                                                delay: isTransitioning ? 0.7 : 0.2
+                                            }
+                                        }}
                                     >
                                         {currentQuestion.text}
                                     </motion.p>
@@ -305,10 +431,22 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                                         <motion.p
                                             className="text-sm text-yellow-400/70 mt-2 flex items-center"
                                             initial={{ opacity: 0 }}
-                                            animate={{ opacity: 1 }}
-                                            transition={{ delay: 0.3 }}
+                                            animate={{
+                                                opacity: 1,
+                                                transition: {
+                                                    delay: isTransitioning ? 0.8 : 0.3
+                                                }
+                                            }}
                                         >
-                                            💡 Indice: {currentQuestion.hint}
+                                            <motion.span
+                                                animate={{
+                                                    rotate: [0, 20, -20, 0],
+                                                    transition: { repeat: Infinity, duration: 3 }
+                                                }}
+                                            >
+                                                💡
+                                            </motion.span>
+                                            Indice: {currentQuestion.hint}
                                         </motion.p>
                                     )}
                                 </motion.div>
@@ -317,15 +455,35 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                                     {!showAnswers ? (
                                         <motion.button
                                             key="show-answers-btn"
-                                            whileHover={{ scale: 1.02 }}
+                                            whileHover={{
+                                                scale: 1.05,
+                                                boxShadow: "0 0 20px rgba(59, 130, 246, 0.5)"
+                                            }}
                                             whileTap={{ scale: 0.98 }}
                                             onClick={handleRevealAnswers}
-                                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-xl font-bold text-lg"
+                                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-500 text-white py-3 rounded-xl font-bold text-lg relative overflow-hidden"
                                             initial={{ opacity: 0, y: 20 }}
-                                            animate={{ opacity: 1, y: 0 }}
+                                            animate={{
+                                                opacity: 1,
+                                                y: 0,
+                                                transition: {
+                                                    delay: isTransitioning ? 0.9 : 0
+                                                }
+                                            }}
                                             exit={{ opacity: 0 }}
                                         >
-                                            Révéler les réponses
+                                            <span className="relative z-10">Révéler les réponses</span>
+                                            <motion.div
+                                                className="absolute inset-0 bg-white/20"
+                                                initial={{ x: "-100%" }}
+                                                animate={{
+                                                    x: "100%",
+                                                    transition: {
+                                                        duration: 2,
+                                                        repeat: Infinity
+                                                    }
+                                                }}
+                                            />
                                         </motion.button>
                                     ) : (
                                         <motion.div
@@ -334,31 +492,56 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                                             animate={{
                                                 opacity: 1,
                                                 height: "auto",
-                                                transition: { type: "spring", damping: 20, stiffness: 200 },
+                                                transition: {
+                                                    type: "spring",
+                                                    damping: 20,
+                                                    stiffness: 200,
+                                                    delay: isTransitioning ? 0.5 : 0
+                                                },
                                             }}
                                             className="space-y-3 overflow-hidden"
                                         >
-                                            <h4 className="text-lg font-semibold text-yellow-400">Réponses :</h4>
+                                            <motion.h4
+                                                className="text-lg font-semibold text-yellow-400"
+                                                initial={{ x: -20 }}
+                                                animate={{ x: 0 }}
+                                            >
+                                                Réponses :
+                                            </motion.h4>
                                             <div className="grid grid-cols-1 gap-2">
-                                                {currentQuestion.answers.map((answer) => (
+                                                {currentQuestion.answers.map((answer, index) => (
                                                     <motion.div
                                                         key={answer.id}
-                                                        initial={{ opacity: 0, x: -20 }}
+                                                        initial={{ opacity: 0, x: -30 }}
                                                         animate={{
                                                             opacity: 1,
                                                             x: 0,
-                                                            transition: { type: "spring", stiffness: 300 },
+                                                            transition: {
+                                                                type: "spring",
+                                                                stiffness: 300,
+                                                                delay: isTransitioning ? 0.6 + index * 0.1 : index * 0.1
+                                                            },
                                                         }}
-                                                        whileHover={{ scale: 1.02 }}
+                                                        whileHover={{
+                                                            scale: 1.03,
+                                                            y: -3
+                                                        }}
                                                         className={`p-3 rounded-lg border-2 ${
                                                             answer.isCorrect
-                                                                ? "border-green-500 bg-green-500/10"
-                                                                : "border-red-500 bg-red-500/10"
-                                                        }`}
+                                                                ? "border-green-500 bg-green-500/10 hover:shadow-lg hover:shadow-green-500/20"
+                                                                : "border-red-500 bg-red-500/10 hover:shadow-lg hover:shadow-red-500/20"
+                                                        } transition-all duration-300`}
                                                     >
                                                         <div className="flex items-start gap-2">
                                                             {answer.isCorrect ? (
-                                                                <Check className="h-5 w-5 text-green-400" />
+                                                                <motion.div
+                                                                    animate={{
+                                                                        scale: [1, 1.2, 1],
+                                                                        transition: { repeat: 1 }
+                                                                    }}
+                                                                >
+                                                                    <Check className="h-5 w-5 text-green-400" />
+                                                                </motion.div>
                                                             ) : (
                                                                 <span className="h-5 w-5 text-red-400">✕</span>
                                                             )}
@@ -374,21 +557,50 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                         )}
 
                         <motion.button
-                            whileHover={{ scale: 1.02 }}
+                            whileHover={{
+                                scale: 1.05,
+                                boxShadow: "0 0 20px rgba(255, 222, 89, 0.5)"
+                            }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleNextQuestion}
                             className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 py-3 rounded-xl font-bold text-lg mt-4 relative overflow-hidden"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{
+                                opacity: 1,
+                                y: 0,
+                                transition: {
+                                    delay: isTransitioning ? 1.0 : 0.2
+                                }
+                            }}
                         >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                {currentQuestionIndex < currentRubrique.questions.length - 1
-                    ? "Question suivante →"
-                    : "Rubrique suivante →"}
-              </span>
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {currentQuestionIndex < currentRubrique.questions.length - 1
+                                    ? "Question suivante →"
+                                    : "Rubrique suivante →"}
+                            </span>
                             <motion.div
                                 className="absolute inset-0 bg-white/20"
                                 initial={{ x: "-100%" }}
-                                animate={{ x: "100%" }}
-                                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                                animate={{
+                                    x: "100%",
+                                    transition: {
+                                        duration: 2,
+                                        repeat: Infinity
+                                    }
+                                }}
+                            />
+                            {/* Effet de halo */}
+                            <motion.div
+                                className="absolute inset-0 rounded-xl border-2 border-yellow-400/30 pointer-events-none"
+                                initial={{ scale: 1, opacity: 0 }}
+                                animate={{
+                                    scale: 1.2,
+                                    opacity: [0, 0.3, 0],
+                                    transition: {
+                                        duration: 2,
+                                        repeat: Infinity
+                                    }
+                                }}
                             />
                         </motion.button>
                     </motion.div>

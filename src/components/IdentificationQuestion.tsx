@@ -1,5 +1,10 @@
 // src/components/IdentificationQuestion.tsx
 import React, { useState, useEffect } from 'react';
+import useSound from 'use-sound';
+import introSound1 from '/sounds/intro1.mp3';
+import introSound2 from '/sounds/intro2.mp3';
+import clueRevealSound from '/sounds/clue-reveal.mp3';
+import letTheGame from '/sounds/let-the-game.mp3';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Check,
@@ -8,7 +13,7 @@ import {
     Telescope,
     Fingerprint,
     Zap,
-    Ghost
+    Ghost,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -48,30 +53,197 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
     const [spookyMode, setSpookyMode] = useState(false);
     const [introStep, setIntroStep] = useState(0);
 
+
+    // Couleurs et styles dynamiques
+    const primaryColor = spookyMode ? '#8b5cf6' : '#f59e0b';
+    const secondaryColor = spookyMode ? '#ec4899' : '#3b82f6';
+    const bgColor = spookyMode ? 'bg-gray-900' : 'bg-gray-800';
+    const textColor = spookyMode ? 'text-purple-400' : 'text-yellow-400';
+
+    // Ajoutez ces lignes pour les effets sonores
+    const playIntro1 = new Audio(introSound1);
+    const playIntro2 = new Audio(introSound2);
+    const playLetBegin = new Audio(letTheGame);
+
+
+
+    const [playClueReveal] = useSound(clueRevealSound);
+
     // Séquence d'intro spectaculaire en plein écran
+    // Modifications dans le useEffect d'intro
     useEffect(() => {
         setSpookyMode(Math.random() < 0.2);
 
-        // Séquence d'intro en 4 étapes
+        // Séquence d'intro en 5 étapes améliorée
         const introTimers = [
-            setTimeout(() => setIntroStep(1), 2000), // Titre
-            setTimeout(() => setIntroStep(2), 4000), // Équipes
-            setTimeout(() => setIntroStep(3), 7000), // Message
+            setTimeout(() => {
+                setIntroStep(1); // Titre
+                playIntro1.play(); // Premier son d'intro
+                // Premier éclair aléatoire
+                if (Math.random() > 0.5) {
+                    setTimeout(() => {
+                        setThunderEffect(true);
+                        setTimeout(() => setThunderEffect(false), 300);
+                    }, Math.random() * 1000 + 500);
+                }
+            }, 1500),
+            setTimeout(() => {
+                setIntroStep(2); // Équipe
+                // Éclair synchronisé
+                setTimeout(() => {
+                    setThunderEffect(true);
+                    setTimeout(() => setThunderEffect(false), 300);
+                }, 800);
+            }, 3500),
+            setTimeout(() => {
+                setIntroStep(3); // Message mystère
+                playIntro2.play();//Deuxième son d'intro
+                playLetBegin.play();
+                // Double éclair pour dramatisation
+                setTimeout(() => {
+                    setThunderEffect(true);
+                    setTimeout(() => {
+                        setThunderEffect(false);
+                        setTimeout(() => {
+                            setThunderEffect(true);
+                            setTimeout(() => setThunderEffect(false), 200);
+                        }, 300);
+                    }, 200);
+                }, 1000);
+            }, 6000),
+            setTimeout(() => {
+                setIntroStep(4); // Appel à l'action
+                // Dernier éclair
+                setTimeout(() => {
+                    setThunderEffect(true);
+                    setTimeout(() => setThunderEffect(false), 400);
+                }, 500);
+            }, 9000),
             setTimeout(() => {
                 setShowIntro(false);
-                if (question.clues?.length) {
-                    setTimeout(() => handleRevealClue(0), 1000);
-                }
-            }, 10000) // Fin de l'intro
+                // On ne révèle plus automatiquement le premier indice
+            }, 12000) // Intro plus longue
         ];
 
         return () => introTimers.forEach(timer => clearTimeout(timer));
     }, [question.clues]);
 
+// Ajouter ce state en haut du composant
+    const [thunderEffect, setThunderEffect] = useState(false);
+
+
+// Modifier l'étape 3 de l'intro pour plus de suspense
+    {introStep >= 3 && (
+        <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{
+                opacity: 1,
+                y: 0,
+                transition: {
+                    duration: 1.5,
+                    ease: "backOut"
+                }
+            }}
+            className="pt-12"
+        >
+            <motion.p
+                className="text-4xl text-white/90 mb-8"
+                initial={{ letterSpacing: '0em' }}
+                animate={{
+                    letterSpacing: ['0em', '0.5em', '0em'],
+                    textShadow: [
+                        '0 0 0px rgba(255,255,255,0)',
+                        `0 0 20px ${primaryColor}`,
+                        '0 0 0px rgba(255,255,255,0)'
+                    ]
+                }}
+                transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    repeatDelay: 2
+                }}
+            >
+                {spookyMode ? 'UN MYSTÈRE VOUS ATTEND...' : 'PRÉPAREZ-VOUS AU DÉFI !'}
+            </motion.p>
+            <motion.div
+                animate={{
+                    scale: [1, 1.3, 1],
+                    opacity: [1, 0.3, 1],
+                    y: [0, -20, 0],
+                    transition: {
+                        repeat: Infinity,
+                        duration: 3,
+                        ease: "easeInOut"
+                    }
+                }}
+                className="text-6xl"
+            >
+                {spookyMode ? '👁️' : '🔎'}
+            </motion.div>
+        </motion.div>
+    )}
+
+// Ajouter une nouvelle étape 4 (juste avant la fin)
+    {introStep >= 4 && (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{
+                opacity: 1,
+                transition: { delay: 0.5 }
+            }}
+            className="absolute bottom-20 left-0 right-0 text-center"
+        >
+            <motion.p
+                className="text-2xl text-white/80 mb-6"
+                animate={{
+                    scale: [1, 1.05, 1],
+                    transition: {
+                        duration: 2,
+                        repeat: Infinity
+                    }
+                }}
+            >
+                {spookyMode ? 'Osez-vous découvrir la vérité ?' : 'Serez-vous à la hauteur ?'}
+            </motion.p>
+            <motion.div
+                animate={{
+                    y: [0, -10, 0],
+                    transition: {
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                    }
+                }}
+            >
+                <motion.div
+                    animate={{
+                        scale: [1, 1.2, 1],
+                        rotate: [0, 5, -5, 0],
+                        transition: {
+                            duration: 4,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }
+                    }}
+                    className="text-5xl cursor-pointer"
+                    onClick={() => setShowIntro(false)}
+                >
+                    {spookyMode ? '👇' : '👉'}
+                </motion.div>
+                <motion.p className="mt-4 text-lg text-white/60">
+                    Cliquez pour commencer
+                </motion.p>
+            </motion.div>
+        </motion.div>
+    )}
+
     const handleRevealClue = async (index: number) => {
         if (revealedClues.includes(index)) return;
         setRevealingClue(index);
         await new Promise(resolve => setTimeout(resolve, 1000)); // Durée d'attente avant révélation
+
+        // Jouer le son de révélation
+        playClueReveal();
 
         confetti({
             particleCount: 100,
@@ -123,11 +295,7 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
         }, 3000); // délai de 3 secondes (ajustez si besoin)
     };
 
-    // Couleurs et styles dynamiques
-    const primaryColor = spookyMode ? '#8b5cf6' : '#f59e0b';
-    const secondaryColor = spookyMode ? '#ec4899' : '#3b82f6';
-    const bgColor = spookyMode ? 'bg-gray-900' : 'bg-gray-800';
-    const textColor = spookyMode ? 'text-purple-400' : 'text-yellow-400';
+
 
     return (
         <div className={`relative overflow-hidden min-h-screen ${bgColor} text-white`}>
@@ -140,6 +308,18 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                         exit={{ opacity: 0 }}
                         transition={{ duration: 1 }}
                     >
+                        {/* Ajouter l'effet de tonnerre ici */}
+                        <AnimatePresence>
+                            {thunderEffect && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: [0.8, 0] }}
+                                    transition={{ duration: 0.3 }}
+                                    className="fixed inset-0 bg-white z-40 pointer-events-none"
+                                />
+                            )}
+                        </AnimatePresence>
+
                         {/* Fond animé plein écran */}
                         <div className="absolute inset-0 overflow-hidden">
                             {[...Array(30)].map((_, i) => (
@@ -318,6 +498,8 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                     </motion.div>
                 )}
             </AnimatePresence>
+
+
 
             {/* Contenu principal */}
             <motion.div
