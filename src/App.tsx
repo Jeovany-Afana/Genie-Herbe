@@ -1114,15 +1114,20 @@ function App() {
                 </div>
               </div>
               {/* Affichage du score de l'équipe */}
-              <div className="ml-2 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-white">Score:</span>
                 <span
-                    className="text-3xl font-bold"
-                    style={{ color: team.color }}
+                    className="text-7xl font-extrabold px-2 rounded"
+                    style={{
+                      background: `radial-gradient(circle at center, ${team.color}33, transparent)`,
+                      color: team.color,
+                      textShadow: `0 0 10px ${team.color}`
+                    }}
                 >
-                  {team.score}
-                </span>
+    {team.score}
+  </span>
               </div>
+
             </div>
 
             {/* Boutons de navigation entre "Joueurs" et "Statistiques" */}
@@ -1212,6 +1217,7 @@ function App() {
                             >
                               -
                             </motion.button>
+
                           </div>
                       )}
                     </div>
