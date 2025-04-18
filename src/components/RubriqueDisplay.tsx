@@ -8,7 +8,6 @@ import { Howl } from 'howler';
 
 // Import du composant IdentificationQuestion
 import { IdentificationQuestion } from "./IdentificationQuestion";
-import { TeamQuestion } from "./TeamQuestion.tsx";
 
 // Sons
 const transitionSound = new Howl({ src: ['/sounds/transition.mp3'] });

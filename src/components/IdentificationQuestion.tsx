@@ -84,7 +84,8 @@ const identificationTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "RESOLVEZ L'ENIGME",
 };
 
 const spookyTheme = {
@@ -116,7 +117,8 @@ const spookyTheme = {
     solutionIcon: "🏆",
     solutionIconAlt: "👏",
     revealButtonClass: "bg-gradient-to-r from-purple-600 to-pink-600 text-white",
-    revealButtonText: "Révéler le spectre"
+    revealButtonText: "Révéler le spectre",
+    emptyClueMessage: "RESOLVEZ LE MYSTÈRE",
 };
 
 const detectiveTheme = {
@@ -148,7 +150,8 @@ const detectiveTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-gray-500 to-gray-400 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "TROUVEZ LE COUPLABLE",
 };
 
 const timeTravelTheme = {
@@ -180,7 +183,8 @@ const timeTravelTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-emerald-400 to-emerald-500 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "RÉSOLVEZ LE PARADOXE",
 };
 
 const spaceTheme = {
@@ -212,7 +216,8 @@ const spaceTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-blue-400 to-blue-500 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "RÉSOLVEZ LE MYSTÈRE INTERSTELLAIRE"
 };
 
 const pirateTheme = {
@@ -244,7 +249,8 @@ const pirateTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-amber-400 to-amber-500 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "TROUVEZ LE BUTIN",
 };
 
 const superheroTheme = {
@@ -276,11 +282,12 @@ const superheroTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-red-400 to-red-500 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "SOUVENEZ-VOUS, HÉROS",
 };
 
 const wizardTheme = {
-    name: "TOURNOI DE SORCIERS",
+    name: "CONFRONTATION DES SORCIERS",
     icon: "🧙",
     color: "#8b5cf6",
     secondaryColor: "#10b981",
@@ -308,7 +315,8 @@ const wizardTheme = {
     solutionIcon: "🎉",
     solutionIconAlt: "🎊",
     revealButtonClass: "bg-gradient-to-r from-purple-600 to-purple-700 text-white",
-    revealButtonText: "Révéler la solution"
+    revealButtonText: "Révéler la solution",
+    emptyClueMessage: "RETROUVEZ-VOUS, SORCIERS",
 };
 
 const allThemes = [
@@ -724,105 +732,151 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
 
                 {/* Indices */}
                 <div className="space-y-6">
-                    <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
-                        <motion.div
-                            animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
-                            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                        >
-                            {currentTheme.indiceIcon ?? <Fingerprint className="h-8 w-8" />}
-                        </motion.div>
-                        Indices à découvrir
-                    </h3>
-
-                    <div className="grid grid-cols-1 gap-6">
-                        {question.clues?.map((clue, index) => (
+                    <div className="space-y-6">
+                        <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
                             <motion.div
-                                key={index}
-                                layout
-                                initial={{ opacity: 0, y: 50 }}
-                                animate={{
-                                    opacity: 1,
-                                    y: 0,
-                                    transition: { delay: index * 0.2 + 1, type: 'spring', stiffness: 300 }
-                                }}
-                                whileHover={{ scale: 1.03 }}
-                                onClick={() => handleRevealClue(index)}
-                                className={`p-6 rounded-xl cursor-pointer transition-all relative overflow-hidden border-2 ${
-                                    revealedClues.includes(index) ? revealedClasses : 'border-gray-700 bg-gray-800 hover:border-yellow-400/50'
-                                }`}
+                                animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
+                                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                             >
-                                <AnimatePresence>
-                                    {revealingClue === index && (
-                                        <motion.div
-                                            initial={{ scale: 0 }}
-                                            animate={{
-                                                scale: 15,
-                                                opacity: 0,
-                                                transition: { duration: 1.2 }
-                                            }}
-                                            className="absolute inset-0 rounded-full"
-                                            style={{
-                                                background: `radial-gradient(circle, ${hexToRgba(currentTheme.color, 0.8)} 0%, ${hexToRgba(currentTheme.color, 0)} 70%)`
-                                            }}
-                                        />
-                                    )}
-                                </AnimatePresence>
-                                <div className="flex items-center gap-5">
+                                {currentTheme.indiceIcon ?? <Fingerprint className="h-8 w-8" />}
+                            </motion.div>
+                            Indices à découvrir
+                        </h3>
+
+                        {/* Vérification si le premier indice est vide */}
+                        {(!question.clues?.[0]?.text || question.clues[0].text.trim() === '') ? (
+                            <motion.div
+                                initial={{ opacity: 0, y: 50 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.8 }}
+                                className="text-center py-16"
+                            >
+                                <motion.h2
+                                    className="text-5xl font-bold mb-6"
+                                    style={{
+                                        background: `linear-gradient(45deg, ${currentTheme.color}, ${currentTheme.secondaryColor})`,
+                                        WebkitBackgroundClip: 'text',
+
+                                    }}
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{
+                                        scale: 1,
+                                        opacity: 1,
+                                        textShadow: [
+                                            `0 0 10px ${currentTheme.color}`,
+                                            `0 0 20px ${currentTheme.secondaryColor}`,
+                                            `0 0 10px ${currentTheme.color}`
+                                        ]
+                                    }}
+                                    transition={{
+                                        duration: 1.5,
+                                        repeat: Infinity,
+                                        repeatType: "reverse"
+                                    }}
+                                >
+                                    {currentTheme.emptyClueMessage || "RÉSOLVEZ L'ÉNIGME"}
+                                </motion.h2>
+                                <motion.p
+                                    className="text-xl text-white/70"
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 0.5 }}
+                                >
+                                    Utilisez les indices sonores pour trouver la solution
+                                </motion.p>
+                            </motion.div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-6">
+                                {question.clues?.map((clue, index) => (
                                     <motion.div
-                                        className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 ${
-                                            revealedClues.includes(index)
-                                                ? currentTheme.submitButtonClass
-                                                : 'bg-gray-700 text-gray-400'
+                                        key={index}
+                                        layout
+                                        initial={{ opacity: 0, y: 50 }}
+                                        animate={{
+                                            opacity: 1,
+                                            y: 0,
+                                            transition: { delay: index * 0.2 + 1, type: 'spring', stiffness: 300 }
+                                        }}
+                                        whileHover={{ scale: 1.03 }}
+                                        onClick={() => handleRevealClue(index)}
+                                        className={`p-6 rounded-xl cursor-pointer transition-all relative overflow-hidden border-2 ${
+                                            revealedClues.includes(index) ? revealedClasses : 'border-gray-700 bg-gray-800 hover:border-yellow-400/50'
                                         }`}
-                                        animate={{ rotate: revealedClues.includes(index) ? 360 : 0, scale: revealingClue === index ? [1, 1.3, 1] : 1 }}
-                                        transition={{ duration: 1, ease: "easeOut" }}
                                     >
-                                        {revealedClues.includes(index) ? <Check className="h-7 w-7" /> : <Lock className="h-6 w-6" />}
-                                    </motion.div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-center">
-                      <span className={`text-xl font-medium ${revealedClues.includes(index) ? currentTheme.textColor : 'text-gray-400'}`}>
-                        Indice {index + 1} - {clue.points} pts
-                      </span>
-                                            {revealedClues.includes(index) && (
-                                                <motion.span
-                                                    animate={{ scale: [1, 1.4, 1], rotate: [0, 15, -15, 0] }}
-                                                    transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                                                    className="text-3xl"
-                                                >
-                                                    {currentTheme.emojis[index % currentTheme.emojis.length]}
-                                                </motion.span>
-                                            )}
-                                        </div>
                                         <AnimatePresence>
-                                            {revealedClues.includes(index) ? (
+                                            {revealingClue === index && (
                                                 <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: 'auto', transition: { delay: 0.5, duration: 0.8 } }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    className="mt-3"
-                                                >
-                                                    <motion.p
-                                                        className="text-white text-xl"
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
-                                                    >
-                                                        {clue.text}
-                                                    </motion.p>
-                                                </motion.div>
-                                            ) : (
-                                                <motion.p className="text-gray-400 italic mt-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                                    Cliquez pour révéler
-                                                </motion.p>
+                                                    initial={{ scale: 0 }}
+                                                    animate={{
+                                                        scale: 15,
+                                                        opacity: 0,
+                                                        transition: { duration: 1.2 }
+                                                    }}
+                                                    className="absolute inset-0 rounded-full"
+                                                    style={{
+                                                        background: `radial-gradient(circle, ${hexToRgba(currentTheme.color, 0.8)} 0%, ${hexToRgba(currentTheme.color, 0)} 70%)`
+                                                    }}
+                                                />
                                             )}
                                         </AnimatePresence>
-                                    </div>
-                                </div>
-                            </motion.div>
-                        ))}
+                                        <div className="flex items-center gap-5">
+                                            <motion.div
+                                                className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 ${
+                                                    revealedClues.includes(index)
+                                                        ? currentTheme.submitButtonClass
+                                                        : 'bg-gray-700 text-gray-400'
+                                                }`}
+                                                animate={{ rotate: revealedClues.includes(index) ? 360 : 0, scale: revealingClue === index ? [1, 1.3, 1] : 1 }}
+                                                transition={{ duration: 1, ease: "easeOut" }}
+                                            >
+                                                {revealedClues.includes(index) ? <Check className="h-7 w-7" /> : <Lock className="h-6 w-6" />}
+                                            </motion.div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center">
+                <span className={`text-xl font-medium ${revealedClues.includes(index) ? currentTheme.textColor : 'text-gray-400'}`}>
+                  Indice {index + 1} - {clue.points} pts
+                </span>
+                                                    {revealedClues.includes(index) && (
+                                                        <motion.span
+                                                            animate={{ scale: [1, 1.4, 1], rotate: [0, 15, -15, 0] }}
+                                                            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                                                            className="text-3xl"
+                                                        >
+                                                            {currentTheme.emojis[index % currentTheme.emojis.length]}
+                                                        </motion.span>
+                                                    )}
+                                                </div>
+                                                <AnimatePresence>
+                                                    {revealedClues.includes(index) ? (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, height: 0 }}
+                                                            animate={{ opacity: 1, height: 'auto', transition: { delay: 0.5, duration: 0.8 } }}
+                                                            exit={{ opacity: 0, height: 0 }}
+                                                            className="mt-3"
+                                                        >
+                                                            <motion.p
+                                                                className="text-white text-xl"
+                                                                initial={{ opacity: 0 }}
+                                                                animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
+                                                            >
+                                                                {clue.text}
+                                                            </motion.p>
+                                                        </motion.div>
+                                                    ) : (
+                                                        <motion.p className="text-gray-400 italic mt-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                                            Cliquez pour révéler
+                                                        </motion.p>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
 
+                </div>
                 {/* Zone de réponse */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="space-y-6">
                     <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
@@ -943,17 +997,10 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                         <Sparkles className="h-6 w-6" />
                     </motion.button>
                 )}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => onFinish?.()}
-                    className="px-6 py-3 bg-red-500 text-white rounded-xl"
-                >
-                    Ignorer
-                </motion.button>
-            </motion.div>
+
+                    </motion.div>
         </div>
-    );
+);
 };
 
 export default IdentificationQuestion;
