@@ -1120,7 +1120,7 @@ function App() {
                     className="text-7xl font-extrabold px-2 rounded"
                     style={{
                       background: `radial-gradient(circle at center, ${team.color}33, transparent)`,
-                      color: team.color,
+                      color: "white",
                       textShadow: `0 0 10px ${team.color}`
                     }}
                 >
@@ -1571,6 +1571,7 @@ function App() {
             <button onClick={() => setShowSettings(!showSettings)} className="p-2 rounded-full glass-effect">
               <Settings className="h-5 w-5 text-yellow-400" />
             </button>
+
           </div>
         </div>
         {isIdentificationFullScreen ? (
