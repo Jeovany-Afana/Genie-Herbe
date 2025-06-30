@@ -25,13 +25,20 @@ interface TeamIntro {
     logo?: string;
     players: Player[];
 }
-
+// Ajoute ces deux lignes dans l'interface
+interface Person {
+    name: string;
+    photo: string;
+}
 interface MatchIntroProps {
     teams: TeamIntro[];
+    presenter: Person;
+    organizer: Person;
     duration?: number;
     onEnd: () => void;
     matchTitle?: string;
 }
+
 
 // Nouveaux variants d'animation
 const titleVariants: Variants = {
@@ -158,10 +165,12 @@ const counterVariants: Variants = {
 export default function MatchIntro({
                                        teams,
                                        duration = 15000,
+                                       presenter,       // ← ajouté
+                                       organizer,       // ← ajouté
                                        onEnd,
                                        matchTitle = "GRANDE FINALE"
                                    }: MatchIntroProps) {
-    const [phase, setPhase] = useState<'title' | 'teams' | 'teamIntro' | 'players' | 'exit'>('title');
+    const [phase, setPhase] = useState<'title' | 'teams' | 'teamIntro' | 'presenter' | 'organizer' |  'players' | 'exit'>('title');
     const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
     const [showPlayerStats, setShowPlayerStats] = useState(false);
@@ -230,24 +239,20 @@ export default function MatchIntro({
                 // Fin de cette équipe
                 clearInterval(playersIntervalRef.current!);
 
-                // Passer à l'équipe suivante ou terminer
+                // S'il reste une équipe, on passe à la suivante
                 if (teamIdx < teams.length - 1) {
-                    setTimeout(() => {
-                        startTeamPresentation(teamIdx + 1);
-                    }, 1000);
+                    setTimeout(() => startTeamPresentation(teamIdx + 1), 1000);
                 } else {
-                    // Fin de toutes les présentations
+                    // Dernière équipe : on enchaîne sur le présentateur
                     setTimeout(() => {
-                        setPhase('exit');
-                        playSound('finale');
-                        canvasConfetti({
-                            particleCount: 1000,
-                            spread: 360,
-                            origin: { y: 0.5 },
-                            colors: [teams[0].color, teams[1].color, '#fff']
-                        });
+                        setPhase('presenter');
+                        playSound('player'); // ou un jingle dédié
 
-                        setTimeout(onEnd, 2000);
+                        // Après 4s, on passe à l'organisateur
+                        setTimeout(() => {
+                            setPhase('organizer');
+                            playSound('team'); // ou un autre jingle
+                        }, 4000);
                     }, 1000);
                 }
                 return;
@@ -560,6 +565,40 @@ export default function MatchIntro({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Présentateur */}
+            <AnimatePresence>
+                {phase === 'presenter' && (
+                    <motion.div className="absolute inset-0 flex items-center justify-center bg-black/90">
+                        <div className="text-center p-8">
+                            <img src={presenter.photo} alt={presenter.name}
+                                 className="w-48 h-48 rounded-full mx-auto mb-4 object-cover"/>
+                            <h2 className="text-4xl font-bold text-white">{presenter.name}</h2>
+                            <p className="mt-2 text-white/70">« Bienvenue ! »</p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Organisateur */}
+            <AnimatePresence>
+                {phase === 'organizer' && (
+                    <motion.div className="absolute inset-0 flex items-center justify-center bg-black/90">
+                        <div className="text-center p-8">
+                            <img src={organizer.photo} alt={organizer.name}
+                                 className="w-48 h-48 rounded-full mx-auto mb-4 object-cover"/>
+                            <h2 className="text-4xl font-bold text-white">{organizer.name}</h2>
+                            <button
+                                onClick={onEnd}
+                                className="mt-6 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-full"
+                            >
+                                Lancer le match
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
         </div>
     );
 }

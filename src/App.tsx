@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Users,
-  Timer,
   Plus,
   Minus,
   Trophy,
-    User,
-    X,
   Crown,
-    UserX,
     ChevronDown,
     ChevronUp,
     RotateCcw,
@@ -28,6 +24,13 @@ import confetti from 'canvas-confetti';
 import { DonutTimer } from './components/DonutTimer';
 import RubriqueDisplay from './components/RubriqueDisplay';
 import MatchIntro from "./components/MatchIntro.tsx";
+
+
+interface Person {
+  name: string;
+  photo: string;
+}
+
 
 // Types
 interface Player {
@@ -100,6 +103,7 @@ function App() {
 
   const [presenter, setPresenter] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
   const [organizer, setOrganizer] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
+  const [phase, setPhase] = useState<'title'|'teams'|'teamIntro'|'players'|'presenter'|'organizer'>('title');
 
 
   const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
@@ -1483,19 +1487,18 @@ function App() {
         </motion.div>
     );
   };
-
   if (gamePhase === 'intro') {
     return (
         <MatchIntro
             teams={teams.map(({ id, name, color, players }) => ({ id, name, color, players }))}
-            duration={7000}      // ou ta valeur préférée
-            onEnd={() => {
-              setGamePhase('game');
-              startTimer(maxTime);
-            }}
+            presenter={presenter}
+            organizer={organizer}
+            duration={7000}
+            onEnd={() => { setGamePhase('game'); startTimer(maxTime); }}
         />
     );
   }
+
 
   if (gamePhase === 'setup') {
     return (
@@ -1560,12 +1563,6 @@ function App() {
                               className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"
                               onChange={() => { /* rien ici : la lecture se fait dans addPlayer */ }}
                           />
-                          {/* BOUTON “AJOUTER” */}
-                          <motion.button>
-                          <UserPlus className="h-5 w-5" />
-                          Ajouter
-                        </motion.button>
-
                           <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -1582,6 +1579,9 @@ function App() {
                           ))}
                         </div>
                       </div>
+
+
+
                     </motion.div>
                 ))}
                 <div className="flex justify-center mt-4">
@@ -1594,6 +1594,54 @@ function App() {
                     <ArrowLeftRight className="h-5 w-5" />
                     Échanger A/B
                   </motion.button>
+                </div>
+                {/* Présentateur */}
+                <div className="space-y-1">
+                  <label className="text-yellow-400 font-medium">Présentateur</label>
+                  <input
+                      type="text"
+                      placeholder="Nom du présentateur"
+                      value={presenter.name}
+                      onChange={e => setPresenter(p => ({ ...p, name: e.target.value }))}
+                      className="w-full px-4 py-2 rounded-xl glass-effect text-white"
+                  />
+                  <input
+                      type="file"
+                      accept="image/*"
+                      className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setPresenter(p => ({ ...p, photo: reader.result as string }));
+                        reader.readAsDataURL(file);
+                      }}
+                  />
+                </div>
+
+                {/* Organisateur */}
+                <div className="space-y-1">
+                  <label className="text-yellow-400 font-medium">Organisateur</label>
+                  <input
+                      type="text"
+                      placeholder="Nom de l'organisateur"
+                      value={organizer.name}
+                      onChange={e => setOrganizer(o => ({ ...o, name: e.target.value }))}
+                      className="w-full px-4 py-2 rounded-xl glass-effect text-white"
+                  />
+                  <input
+                      type="file"
+                      accept="image/*"
+                      className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"
+
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = () => setOrganizer(o => ({ ...o, photo: reader.result as string }));
+                        reader.readAsDataURL(file);
+                      }}
+                  />
                 </div>
                 <motion.button
                     whileHover={{ scale: 1.05 }}
