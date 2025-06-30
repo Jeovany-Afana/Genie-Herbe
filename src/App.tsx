@@ -27,14 +27,17 @@ import useSound from 'use-sound';
 import confetti from 'canvas-confetti';
 import { DonutTimer } from './components/DonutTimer';
 import RubriqueDisplay from './components/RubriqueDisplay';
+import MatchIntro from "./components/MatchIntro.tsx";
 
 // Types
 interface Player {
   id: string;
   name: string;
+  photo?: string;       // ← ajouté
   isActive: boolean;
   pointsScored: number;
 }
+
 
 interface Team {
   id: string;
@@ -51,6 +54,8 @@ interface GameHistory {
   teams: Team[];
   timestamp: number;
 }
+
+
 
 // Constants
 const POINTS_OPTIONS = [10, 20];
@@ -85,13 +90,17 @@ function App() {
   const [time, setTime] = useState<number>(30);
   const [maxTime, setMaxTime] = useState<number>(30);
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [gamePhase, setGamePhase] = useState<'setup' | 'game' | 'results'>('setup');
+  const [gamePhase, setGamePhase] = useState<'setup' | 'intro' | 'game' | 'results'>('setup');
   const [showAlert, setShowAlert] = useState<string>('');
   const [history, setHistory] = useState<GameHistory[]>([]);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'history'>('game');
   const [isIdentificationFullScreen, setIsIdentificationFullScreen] = useState(false);
+
+  const [presenter, setPresenter] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
+  const [organizer, setOrganizer] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
+
 
   const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
 
@@ -100,6 +109,9 @@ function App() {
   const timerCircleRef = useRef<SVGCircleElement>(null);
   const teamACardRef = useRef<HTMLDivElement>(null);
   const teamBCardRef = useRef<HTMLDivElement>(null);
+  // refs supplémentaires pour chaque équipe
+  const photoInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
 
   // Animations
   const teamAControls = useAnimation();
@@ -771,30 +783,44 @@ function App() {
   };
 
   const addPlayer = (teamIndex: number) => {
-    const inputRef = playerInputRefs[teamIndex];
-    if (!inputRef.current) return;
-    const playerName = inputRef.current.value.trim();
+    const nameInput = playerInputRefs[teamIndex].current;
+    const fileInput = photoInputRefs[teamIndex].current;
+    if (!nameInput) return;
+
+    const playerName = nameInput.value.trim();
     if (!playerName) return;
-    setTeams(
-        teams.map((team, index) => {
-          if (index === teamIndex) {
-            return {
-              ...team,
-              players: [
-                ...team.players,
-                {
-                  id: Date.now().toString(),
-                  name: playerName,
-                  isActive: team.players.length < 4,
-                  pointsScored: 0
+
+    // Récupération du fichier (s’il y en a un)
+    const file = fileInput?.files?.[0];
+    let photoUrl: string | undefined;
+    if (file) {
+      // URL locale en mémoire (valide tant que l’onglet reste ouvert)
+      photoUrl = URL.createObjectURL(file);
+    }
+
+    setTeams(prev =>
+        prev.map((team, idx) =>
+            idx === teamIndex
+                ? {
+                  ...team,
+                  players: [
+                    ...team.players,
+                    {
+                      id: Date.now().toString(),
+                      name: playerName,
+                      photo: photoUrl,        // ← stocke le lien
+                      isActive: team.players.length < 4,
+                      pointsScored: 0
+                    }
+                  ]
                 }
-              ]
-            };
-          }
-          return team;
-        })
+                : team
+        )
     );
-    inputRef.current.value = '';
+
+    // reset des champs
+    nameInput.value = '';
+    if (fileInput) fileInput.value = '';
     playButtonClick();
   };
 
@@ -838,7 +864,7 @@ function App() {
         teams[0].players.length > 0 &&
         teams[1].players.length > 0
     ) {
-      setGamePhase('game');
+      setGamePhase('intro');
       setHistory([{ teams: [...teams], timestamp: Date.now() }]);
       playButtonClick();
     }
@@ -1328,6 +1354,15 @@ function App() {
               {player.name}
             </p>
           </div>
+          {/* Miniature, seulement si player.photo existe */}
+          {player.photo && (
+              <img
+                  src={player.photo}
+                  alt={player.name}
+                  className="w-full h-24 object-cover rounded-lg mb-1"
+              />
+          )}
+
 
           {/* Ligne 2: Points et boutons +/- */}
           <div className="flex items-center justify-between gap-2 w-full">
@@ -1449,6 +1484,19 @@ function App() {
     );
   };
 
+  if (gamePhase === 'intro') {
+    return (
+        <MatchIntro
+            teams={teams.map(({ id, name, color, players }) => ({ id, name, color, players }))}
+            duration={7000}      // ou ta valeur préférée
+            onEnd={() => {
+              setGamePhase('game');
+              startTimer(maxTime);
+            }}
+        />
+    );
+  }
+
   if (gamePhase === 'setup') {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-900 gradient-animate p-4 md:p-8 flex items-center justify-center">
@@ -1505,6 +1553,19 @@ function App() {
                               className="flex-1 px-4 py-2 rounded-xl glass-effect border-2 border-yellow-400/50 focus:border-yellow-400 text-white placeholder-white/50 outline-none"
                               onKeyPress={(e) => e.key === 'Enter' && addPlayer(index)}
                           />
+                          <input               // ← nouveau champ
+                              ref={photoInputRefs[index]}
+                              type="file"
+                              accept="image/*"
+                              className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"
+                              onChange={() => { /* rien ici : la lecture se fait dans addPlayer */ }}
+                          />
+                          {/* BOUTON “AJOUTER” */}
+                          <motion.button>
+                          <UserPlus className="h-5 w-5" />
+                          Ajouter
+                        </motion.button>
+
                           <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
