@@ -26,12 +26,6 @@ import RubriqueDisplay from './components/RubriqueDisplay';
 import MatchIntro from "./components/MatchIntro.tsx";
 
 
-interface Person {
-  name: string;
-  photo: string;
-}
-
-
 // Types
 interface Player {
   id: string;
@@ -65,6 +59,14 @@ const POINTS_OPTIONS = [10, 20];
 const TIMER_OPTIONS = [5, 10, 20, 30];
 const TEAM_COLORS = ['#F59E0B', '#3B82F6', '#10B981', '#EF4444', '#8B5CF6'];
 const MILESTONE_POINTS = 100;
+
+// juste après les autres constantes
+const GAME_BGM: string[] = [
+  '/sounds/konami.mp3',
+  '/sounds/audio_nicki.mp3',
+  '/sounds/santa_theresa_mp3_32445.mp3'
+];
+
 
 function App() {
   // State
@@ -104,6 +106,9 @@ function App() {
   const [presenter, setPresenter] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
   const [organizer, setOrganizer] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
   const [phase, setPhase] = useState<'title'|'teams'|'teamIntro'|'players'|'presenter'|'organizer'>('title');
+  const bgmRef        = useRef<HTMLAudioElement | null>(null);   // player courant
+  const [trackIndex, setTrackIndex] = useState(0);               // piste en cours
+
 
 
   const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
@@ -128,6 +133,44 @@ function App() {
   const [playMilestone] = useSound('/sounds/milestone.mp3', { volume: isMuted ? 0 : 0.7 });
   const [playTeamChange] = useSound('/sounds/team-change.mp3', { volume: isMuted ? 0 : 0.4 });
   const [playButtonClick] = useSound('/sounds/button-click.mp3', { volume: isMuted ? 0 : 0.3 });
+
+
+  useEffect(() => {
+    // ► Quand on bascule en phase "game" : démarrage
+    if (gamePhase === 'game') {
+      // Stoppe une éventuelle piste déjà lancée
+      bgmRef.current?.pause();
+
+      const audio = new Audio(GAME_BGM[trackIndex]);
+      audio.volume = isMuted ? 0 : 0.6;          // même volume que tes autres sons
+      audio.loop   = false;                      // on veut passer à la suivante
+      audio.onended = () => {
+        // Avance dans la liste (boucle)
+        setTrackIndex(prev => (prev + 1) % GAME_BGM.length);
+      };
+
+      bgmRef.current = audio;
+      // ⚠️ Peut être bloqué par l’autoplay : démarrera au 1er clic utilisateur si besoin
+      audio.play().catch(() => {});
+    } else {
+      // ► Toutes les autres phases : on coupe
+      bgmRef.current?.pause();
+      bgmRef.current = null;
+    }
+
+    // nettoyage si le composant démonte
+    return () => bgmRef.current?.pause();
+  }, [gamePhase, trackIndex, isMuted]);
+
+
+  useEffect(() => {
+    if (bgmRef.current) {
+      bgmRef.current.volume = isMuted ? 0 : 0.6;
+    }
+  }, [isMuted]);
+
+
+
 
   useEffect(() => {
     if (isRunning && time > 0) {
