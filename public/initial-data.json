@@ -1,0 +1,45 @@
+{
+  "teams": [
+    {
+      "name": "BDE",
+      "color": "#F59E0B",
+      "players": [
+        { "name": "Daouda", "photo": "/Finale/BDE/daouda.jpeg" },
+        { "name": "Rassoul", "photo": "/Finale/BDE/rassoul.jpeg" }   ,
+        { "name": "Yoro Ben", "photo": "/Finale/BDE/ben.jpeg" },
+        { "name": "Ya Aicha", "photo": "/Finale/BDE/aicha.jpeg" },
+        { "name": "Pathé", "photo": "/Finale/BDE/pathe.jpeg" },
+        { "name": "Rassoul", "photo": "/Finale/BDE/rassoul.jpeg" }
+      ]
+    },
+    {
+      "name": "CLUB ART ORATOIRE",
+      "color": "#3B82F6",
+      "players": [
+        { "name": "Khadijah THIAM", "photo": "/Finale/Art Oratoire/kadjija.jpeg" },
+        { "name": "Mouhamed NDIAYE", "photo": "/Finale/Art Oratoire/mouhamed.jpeg" },
+        { "name": "Aby SENE", "photo": "/Finale/Art Oratoire/aby.jpeg" },
+        { "name": "Diadjietou FAYE", "photo": "/Finale/Art Oratoire/ndeye.jpeg" },
+        { "name": "Saliou Diop SAMB", "photo": "/Finale/Art Oratoire/saliou.jpeg" },
+        { "name": "Ndiasse NDOYE", "photo": "/Finale/Art Oratoire/ndiasse.jpeg" }
+      ]
+    }
+  ],
+
+  "partners": [
+    { "name": "BADAL AK JAMM",      "logo": "/Finale/Partenaires/badal.jpeg" },
+    { "name": "CAPLA",      "logo": "/Finale/Partenaires/capla.jpeg" },
+    { "name": "Eric FAVRE",      "logo": "/Finale/Partenaires/eric.jpeg" },
+    { "name": "THIES FITNESS CLUB",      "logo": "/Finale/Partenaires/fitness.jpeg" },
+    { "name": "YASTIC",      "logo": "/Finale/Partenaires/yastic.jpeg" }
+  ],
+
+  "jury": [
+    { "name": "Mme Yacine FALL", "photo": "/Finale/Jury/yacine.jpeg" },
+    { "name": "M. Khadim NDOYE", "photo": "/Finale/Jury/bamba.jpeg" },
+    { "name": "M. NIANG", "photo": "/Finale/Jury/niang.jpeg" }
+  ],
+
+  "presenter": { "name": "Mouhamed KA",   "photo": "/Finale/presentateur.jpeg" },
+  "organizer": { "name": "Papa DIAW",  "photo": "/Finale/organisateur.jpeg" }
+}

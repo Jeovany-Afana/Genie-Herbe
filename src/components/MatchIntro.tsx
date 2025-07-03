@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import Confetti from 'react-confetti';
 import canvasConfetti from 'canvas-confetti';
-import LightningFlash from "./LightningFlash.tsx";
+import  { Partner, JuryMember } from '../App.tsx'
 
 interface Player {
     id: string;
@@ -35,10 +35,15 @@ interface MatchIntroProps {
     teams: TeamIntro[];
     presenter: Person;
     organizer: Person;
+    jury: JuryMember[];          // ← NEW
+    partners: Partner[];         // ← NEW
     duration?: number;
     onEnd: () => void;
     matchTitle?: string;
 }
+
+
+
 
 
 // Nouveaux variants d'animation
@@ -171,19 +176,25 @@ export default function MatchIntro({
                                        teams,
                                        duration = 15000,
                                        presenter,       // ← ajouté
-                                       organizer,       // ← ajouté
+                                       organizer,
+                                       jury = [],          //  ←–––– ICI
+                                       partners = [],      //  ←–––– ET ICI// ← ajouté
                                        onEnd,
                                        matchTitle = "GRANDE FINALE"
                                    }: MatchIntroProps) {
-    const [phase, setPhase] = useState<'title' | 'teams' | 'teamIntro' | 'presenter' | 'organizer' |  'players' | 'exit'>('title');
+    const [phase, setPhase] = useState<'title' | 'teams' | 'teamIntro' | 'presenter' | 'jury' | 'partners' | 'organizer' |  'players' | 'exit'>('title');
     const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
     const [showPlayerStats, setShowPlayerStats] = useState(false);
     const [showTeamHeader, setShowTeamHeader] = useState(true);
-    const animationRef = useRef<NodeJS.Timeout>();
     const playersIntervalRef = useRef<NodeJS.Timeout>();
     const teamTimeoutRef = useRef<NodeJS.Timeout>();
-    const [flash, setFlash]   = useState(false);
+    const [ setFlash]   = useState(false);
+    const [currentJuryIndex,    setCurrentJuryIndex]    = useState(0);   // ← NEW
+    const [currentPartnerIndex, setCurrentPartnerIndex] = useState(0);   // ← NEW
+    // 1.  Nouvel état
+    const [shownPlayers, setShownPlayers] = useState<Player[]>([]);
+
 
     // -------------  state supplémentaires -------------
     const [showRoster, setShowRoster] = useState(false);   // afficher les deux équipes sous l’organisateur
@@ -203,14 +214,18 @@ export default function MatchIntro({
         }
     };
 
-    // dans MatchIntro.tsx (début du fichier, sous les variants existants)
-    const versusBannerVariants: Variants = {
-        hidden: { opacity: 0, scale: .8, y: -30 },
-        visible:{ opacity: 1, scale: 1,  y: 0,
-            transition:{ type:'spring', stiffness:120, damping:12 }},
-        pulse:  { scale:[1,1.05,1], rotate:[0,1,-1,0],
-            transition:{ repeat:Infinity, duration:2 } }
+    const juryCardVariants: Variants = {
+        hidden : { opacity: 0, scale: 0.8, y: 50 },
+        visible: {
+            opacity: 1,
+            scale : 1,
+            y     : 0,
+            transition: { duration: 0.6, type: 'spring', stiffness: 120 }
+        },
+        exit   : { opacity: 0, scale: 0.8, y: -50, transition: { duration: 0.4 }}
     };
+
+
 
 
     // déclenche des éclairs aléatoires tant que le roster est visible
@@ -229,6 +244,29 @@ export default function MatchIntro({
 
         return () => clearInterval(id);    // nettoyage si on quitte le composant
     }, [showRoster]);
+
+
+    /* ─── JURY : défilement séquentiel ─── */
+    useEffect(() => {
+        if (phase !== 'jury') return;
+
+        setCurrentJuryIndex(0);               // on repart du premier
+        const id = setInterval(() => {
+            setCurrentJuryIndex(prev => {
+                if (prev < jury.length - 1) return prev + 1;
+
+                // dernier membre : on attend 2 s puis on passe aux partenaires
+                clearInterval(id);
+                setTimeout(() => {
+                    setPhase('partners');
+                    setCurrentPartnerIndex(0);
+                }, 2000);
+                return prev;
+            });
+        }, 3500);                             // ← vitesse : 3,5 s entre chaque carte
+
+        return () => clearInterval(id);
+    }, [phase, jury.length]);
 
 
 
@@ -285,17 +323,22 @@ export default function MatchIntro({
     };
 
     // Présenter un joueur spécifique
+    /**  Affiche un joueur : ajoute la carte au tableau des joueurs déjà montrés  */
     const presentPlayer = (teamIdx: number, playerIdx: number) => {
         setCurrentTeamIndex(teamIdx);
         setCurrentPlayerIndex(playerIdx);
+
+        // ► on empile la nouvelle carte
+        const newPlayer = teams[teamIdx].players[playerIdx];
+        setShownPlayers(prev => [...prev, newPlayer]);
+
         setShowPlayerStats(false);
-       // playSound('intro1');
         fireConfetti(teamIdx === 0 ? 60 : 120);
 
-        setTimeout(() => {
-            setShowPlayerStats(true);
-        }, 500);
+        // petite pause avant d’afficher ses stats (uniquement la dernière carte)
+        setTimeout(() => setShowPlayerStats(true), 500);
     };
+
 
     // Démarrer la présentation d'une équipe
     const startTeamPresentation = (teamIdx: number) => {
@@ -313,43 +356,56 @@ export default function MatchIntro({
     };
 
     // Démarrer la présentation des joueurs d'une équipe
+    /**  Lance la présentation séquentielle des joueurs d’une équipe  */
     const startPlayersPresentation = (teamIdx: number) => {
         setPhase('players');
+        setShownPlayers([]);                // ← on vide la grille pour la nouvelle équipe
         let playerIdx = 0;
 
-        // Présenter le premier joueur immédiatement
-        presentPlayer(teamIdx, playerIdx);
+        presentPlayer(teamIdx, playerIdx);  // premier joueur immédiatement
 
-        // Puis passer aux suivants toutes les 1.8 secondes
+        // ensuite, un joueur toutes les 4 s
         playersIntervalRef.current = setInterval(() => {
             playerIdx++;
 
             if (playerIdx >= teams[teamIdx].players.length) {
-                // Fin de cette équipe
+                // ─── fin de l’équipe ───
                 clearInterval(playersIntervalRef.current!);
 
-                // S'il reste une équipe, on passe à la suivante
                 if (teamIdx < teams.length - 1) {
+                    /* encore une équipe à présenter */
                     setTimeout(() => startTeamPresentation(teamIdx + 1), 1000);
                 } else {
-                    // Dernière équipe : on enchaîne sur le présentateur
+                    /* dernière équipe → présentateur puis organisateur */
                     setTimeout(() => {
                         setPhase('presenter');
-                        playSound('intro1'); // ou un jingle dédié
+                        playSound('intro1');
 
-                        // Après 4s, on passe à l'organisateur
                         setTimeout(() => {
                             setPhase('organizer');
-                            playSound('intro1'); // ou un autre jingle
-                        }, 4000);
+                            playSound('intro1');
+                        }, 4000); // durée d’affichage du présentateur
                     }, 1000);
                 }
                 return;
             }
 
+            /* joueur suivant */
             presentPlayer(teamIdx, playerIdx);
         }, 4000);
     };
+
+
+    // écoute la fin du jury
+    useEffect(() => {
+        if (phase === 'jury' && currentJuryIndex >= jury.length) {
+            setTimeout(() => {
+                setPhase('partners');
+                setCurrentPartnerIndex(0);
+            }, 1000);
+        }
+    }, [phase, currentJuryIndex, jury.length]);
+
 
     useEffect(() => {
         // Son d'intro dès le montage
@@ -529,31 +585,33 @@ export default function MatchIntro({
                 )}
             </AnimatePresence>
 
-            {/* Phase 3b: Présentation des joueurs */}
-            <AnimatePresence mode="wait">
-                {(phase === 'players' || phase === 'teamIntro') && !showTeamHeader && (
+            {/* ─── Phase 3b : présentation / rangement des joueurs ─── */}
+            <AnimatePresence mode="popLayout">
+                {phase === 'players' && (
                     <motion.div
+                        key={`players-grid-${currentTeamIndex}`}
                         className="absolute inset-0 flex items-center justify-center"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        key={`player-${currentTeamIndex}-${currentPlayerIndex}`}
                     >
                         {/* Fond coloré */}
                         <motion.div
                             className="absolute inset-0 opacity-70"
                             style={{
                                 backgroundColor: teams[currentTeamIndex].color,
-                                backgroundImage: `radial-gradient(${teams[currentTeamIndex].secondaryColor || teams[currentTeamIndex].color} 20%, transparent 70%)`
+                                backgroundImage: `radial-gradient(${
+                                    teams[currentTeamIndex].secondaryColor ||
+                                    teams[currentTeamIndex].color
+                                } 20%, transparent 70%)`,
                             }}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 0.7 }}
                             exit={{ opacity: 0 }}
                         />
 
-                        {/* Contenu du joueur */}
-                        <div className="relative w-full max-w-4xl px-4">
-                            {/* Compteur joueur */}
+                        <div className="relative w-full max-w-6xl px-4">
+                            {/* Compteur */}
                             <motion.div
                                 className="absolute -top-10 left-0 right-0 flex justify-center"
                                 variants={counterVariants}
@@ -561,101 +619,92 @@ export default function MatchIntro({
                                 animate="visible"
                             >
                                 <div className="bg-black/50 px-4 py-2 rounded-full text-white text-sm font-semibold">
-                                    Joueur {currentPlayerIndex + 1}/{teams[currentTeamIndex].players.length} • Équipe {currentTeamIndex + 1}/{teams.length}
+                                    {shownPlayers.length}/{teams[currentTeamIndex].players.length} joueurs • Équipe
+                                    {currentTeamIndex + 1}/{teams.length}
                                 </div>
                             </motion.div>
 
+                            {/* Grille des cartes déjà dévoilées */}
                             <motion.div
-                                className="bg-black/70 backdrop-blur-lg rounded-2xl overflow-hidden shadow-2xl"
-                                variants={playerCardVariants}
-                                initial="hidden"
-                                animate="visible"
-                                exit="exit"
-                                custom={{ direction: currentPlayerIndex % 2 === 0 ? 1 : -1 }}
+                                layout                           // re-layout animé des cartes
+                                className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
                             >
-                                <div className="flex flex-col md:flex-row">
-                                    {/* Photo du joueur */}
+                                {shownPlayers.map((pl, i) => (
                                     <motion.div
-                                        className="relative w-full md:w-1/3 h-64 md:h-auto bg-gradient-to-b from-white/10 to-white/5"
-                                        variants={photoVariants}
+                                        key={pl.id}
+                                        layout
+                                        variants={playerCardVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        className="bg-black/70 backdrop-blur-lg rounded-2xl overflow-hidden shadow-2xl"
                                     >
-                                        {teams[currentTeamIndex].players[currentPlayerIndex].photo ? (
-                                            <img
-                                                src={teams[currentTeamIndex].players[currentPlayerIndex].photo}
-                                                alt={teams[currentTeamIndex].players[currentPlayerIndex].name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <span className="text-8xl font-bold text-white/30">
-                                                    {teams[currentTeamIndex].players[currentPlayerIndex].number || '?'}
-                                                </span>
-                                            </div>
-                                        )}
-                                        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
-                                    </motion.div>
-
-                                    {/* Infos du joueur */}
-                                    <div className="w-full md:w-2/3 p-8 flex flex-col justify-center">
-                                        <motion.div
-                                            className="mb-6"
-                                            variants={playerSlideVariants}
-                                            custom={{ direction: -1 }}
-                                            initial="hidden"
-                                            animate="visible"
-                                            exit="exit"
-                                        >
-                                            <div className="text-sm font-semibold text-white/70 mb-1">
-                                                {teams[currentTeamIndex].name}
-                                            </div>
-                                            <h3 className="text-4xl font-bold text-white mb-2">
-                                                {teams[currentTeamIndex].players[currentPlayerIndex].name}
-                                            </h3>
-                                            <div className="flex gap-4">
-                                                {teams[currentTeamIndex].players[currentPlayerIndex].number && (
-                                                    <span className="px-3 py-1 bg-white/10 rounded-full text-white">
-                                                        #{teams[currentTeamIndex].players[currentPlayerIndex].number}
-                                                    </span>
-                                                )}
-                                                {teams[currentTeamIndex].players[currentPlayerIndex].position && (
-                                                    <span className="px-3 py-1 bg-white/10 rounded-full text-white">
-                                                        {teams[currentTeamIndex].players[currentPlayerIndex].position}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </motion.div>
-
-                                        {/* Statistiques */}
-                                        {teams[currentTeamIndex].players[currentPlayerIndex].stats && (
+                                        <div className="flex flex-col">
+                                            {/* Photo */}
                                             <motion.div
-                                                className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4"
-                                                initial="hidden"
-                                                animate={showPlayerStats ? "visible" : "hidden"}
+                                                className="relative w-full aspect-[3/4] bg-gradient-to-b from-white/10 to-white/5 overflow-hidden"
+                                                variants={photoVariants}
                                             >
-                                                {Object.entries(teams[currentTeamIndex].players[currentPlayerIndex].stats || {}).map(([key, value], i) => (
-                                                    <motion.div
-                                                        key={key}
-                                                        className="bg-white/5 rounded-lg p-3"
-                                                        custom={i}
-                                                        variants={statItemVariants}
-                                                    >
-                                                        <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-                                                            {key}
-                                                        </div>
-                                                        <div className="text-2xl font-bold text-white">
-                                                            {value}
-                                                        </div>
-                                                    </motion.div>
-                                                ))}
+                                                {pl.photo ? (
+                                                    <img
+                                                        src={pl.photo}
+                                                        alt={pl.name}
+                                                        className="absolute inset-0 w-full h-full object-contain"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-8xl font-bold text-white/30">
+                        {pl.number ?? '?'}
+                      </span>
+                                                    </div>
+                                                )}
+                                                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
                                             </motion.div>
-                                        )}
-                                    </div>
-                                </div>
+
+                                            {/* Infos joueur */}
+                                            <div className="p-6 flex flex-col justify-center">
+                                                <h3 className="text-2xl font-bold text-white mb-1">{pl.name}</h3>
+                                                <div className="flex gap-3 mb-3">
+                                                    {pl.number && (
+                                                        <span className="px-3 py-1 bg-white/10 rounded-full text-white">#{pl.number}</span>
+                                                    )}
+                                                    {pl.position && (
+                                                        <span className="px-3 py-1 bg-white/10 rounded-full text-white">{pl.position}</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Statistiques uniquement pour la DERNIÈRE carte + après le petit délai */}
+                                                {i === shownPlayers.length - 1 && showPlayerStats && pl.stats && (
+                                                    <motion.div
+                                                        className="grid grid-cols-2 gap-4 mt-2"
+                                                        initial="hidden"
+                                                        animate="visible"
+                                                    >
+                                                        {Object.entries(pl.stats).map(([k, v], idx) => (
+                                                            <motion.div
+                                                                key={k}
+                                                                custom={idx}
+                                                                variants={statItemVariants}
+                                                                className="bg-white/5 rounded-lg p-3"
+                                                            >
+                                                                <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                                                                    {k}
+                                                                </div>
+                                                                <div className="text-2xl font-bold text-white">{v}</div>
+                                                            </motion.div>
+                                                        ))}
+                                                    </motion.div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                ))}
                             </motion.div>
                         </div>
                     </motion.div>
                 )}
             </AnimatePresence>
+
+
 
             {/* Présentateur */}
             <AnimatePresence>
@@ -682,33 +731,33 @@ export default function MatchIntro({
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                     >
-                        {/* Effet de particules subtil en arrière-plan */}
+                        {/* Effet de particules en arrière-plan */}
                         <div className="absolute inset-0 opacity-20">
                             {[...Array(20)].map((_, i) => (
                                 <motion.div
                                     key={i}
                                     className="absolute rounded-full bg-white"
                                     style={{
-                                        width: Math.random() * 5 + 2 + 'px',
-                                        height: Math.random() * 5 + 2 + 'px',
-                                        left: Math.random() * 100 + '%',
-                                        top: Math.random() * 100 + '%',
+                                        width : `${Math.random() * 5 + 2}px`,
+                                        height: `${Math.random() * 5 + 2}px`,
+                                        left  : `${Math.random() * 100}%`,
+                                        top   : `${Math.random() * 100}%`,
                                     }}
                                     animate={{
-                                        y: [0, (Math.random() - 0.5) * 40],
-                                        x: [0, (Math.random() - 0.5) * 20],
+                                        y      : [0, (Math.random() - 0.5) * 40],
+                                        x      : [0, (Math.random() - 0.5) * 20],
                                         opacity: [0.2, 0.8, 0.2],
                                     }}
                                     transition={{
                                         duration: Math.random() * 10 + 5,
-                                        repeat: Infinity,
+                                        repeat  : Infinity,
                                         repeatType: 'reverse',
                                     }}
                                 />
                             ))}
                         </div>
 
-                        {/* Carte organisateur avec effet de halo */}
+                        {/* Carte organisateur */}
                         <motion.div
                             variants={organizerCardVariants}
                             initial="center"
@@ -717,22 +766,16 @@ export default function MatchIntro({
                             className="w-full flex flex-col items-center pt-12 relative z-10"
                         >
                             <div className="relative">
-                                {/* Halo animé */}
+                                {/* Halo */}
                                 <motion.div
                                     className="absolute -inset-4 rounded-full"
-                                    style={{
-                                        background: `radial-gradient(circle, ${teams[0].color} 0%, transparent 70%)`,
-                                    }}
+                                    style={{ background: `radial-gradient(circle, ${teams[0].color} 0%, transparent 70%)` }}
                                     initial={{ opacity: 0, scale: 0.8 }}
                                     animate={{ opacity: 0.3, scale: 1.2 }}
-                                    transition={{
-                                        repeat: Infinity,
-                                        repeatType: 'reverse',
-                                        duration: 3,
-                                    }}
+                                    transition={{ repeat: Infinity, repeatType: 'reverse', duration: 3 }}
                                 />
 
-                                {/* Photo avec bordure animée */}
+                                {/* Photo organisateur */}
                                 <motion.img
                                     src={organizer.photo}
                                     alt={organizer.name}
@@ -757,11 +800,11 @@ export default function MatchIntro({
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: 0.4 }}
                             >
-                                <p className="text-white/80 text-sm font-medium tracking-wider">ORGANISATEUR DU MATCH</p>
+                                <p className="text-white/80 text-sm font-medium tracking-wider">ORGANISATEUR&nbsp;DU&nbsp;MATCH</p>
                             </motion.div>
                         </motion.div>
 
-                        {/* Rosters des équipes avec effet de transition */}
+                        {/* Rosters des équipes */}
                         {showRoster && (
                             <>
                                 <motion.div
@@ -793,22 +836,13 @@ export default function MatchIntro({
                                                 <div className="flex items-center justify-between mb-6">
                                                     <div className="flex items-center">
                                                         {team.logo && (
-                                                            <img
-                                                                src={team.logo}
-                                                                alt={team.name}
-                                                                className="w-12 h-12 mr-3 object-contain"
-                                                            />
+                                                            <img src={team.logo} alt={team.name} className="w-12 h-12 mr-3 object-contain" />
                                                         )}
-                                                        <h4
-                                                            className="text-xl font-bold"
-                                                            style={{ color: team.color }}
-                                                        >
+                                                        <h4 className="text-xl font-bold" style={{ color: team.color }}>
                                                             {team.name}
                                                         </h4>
                                                     </div>
-                                                    <span className="text-white/60 text-sm">
-                      {team.players.length} joueurs
-                    </span>
+                                                    <span className="text-white/60 text-sm">{team.players.length} joueurs</span>
                                                 </div>
 
                                                 <div className="grid grid-cols-3 gap-3">
@@ -820,8 +854,8 @@ export default function MatchIntro({
                                                             animate={{ opacity: 1, scale: 1 }}
                                                             transition={{
                                                                 delay: 0.8 + index * 0.1 + playerIndex * 0.03,
-                                                                type: 'spring',
-                                                                stiffness: 300
+                                                                type : 'spring',
+                                                                stiffness: 300,
                                                             }}
                                                             whileHover={{ y: -5 }}
                                                         >
@@ -851,7 +885,7 @@ export default function MatchIntro({
                                     </div>
                                 </motion.div>
 
-                                {/* Bouton avec effet de pulsation */}
+                                {/* BOUTON : passer au jury */}
                                 <motion.div
                                     className="w-full flex justify-center pb-12 pt-6"
                                     initial={{ opacity: 0 }}
@@ -861,42 +895,145 @@ export default function MatchIntro({
                                     <motion.button
                                         whileHover={{ scale: 1.05 }}
                                         whileTap={{ scale: 0.95 }}
-                                        onClick={onEnd}
-                                        className="px-10 py-4 rounded-full font-bold text-lg relative overflow-hidden"
-                                        style={{
-                                            background: 'linear-gradient(45deg, #6d28d9, #4f46e5)',
-                                            boxShadow: '0 4px 20px rgba(109, 40, 217, 0.5)'
+                                        onClick={() => {
+                                            setPhase('jury');
+                                            setCurrentJuryIndex(0);
+                                            playSound('intro1');
                                         }}
-                                        animate={{
-                                            boxShadow: [
-                                                '0 4px 20px rgba(109, 40, 217, 0.5)',
-                                                '0 4px 30px rgba(109, 40, 217, 0.7)',
-                                                '0 4px 20px rgba(109, 40, 217, 0.5)'
-                                            ]
-                                        }}
-                                        transition={{
-                                            repeat: Infinity,
-                                            repeatType: 'reverse',
-                                            duration: 2
-                                        }}
+                                        className="px-10 py-4 rounded-full font-bold text-lg relative overflow-hidden
+                         bg-gradient-to-r from-yellow-400 to-yellow-500 text-blue-900 shadow-lg"
                                     >
-                                        <span className="relative z-10">Lancer le match</span>
-                                        <motion.span
-                                            className="absolute inset-0 bg-gradient-to-r from-purple-500 to-blue-500 opacity-0"
-                                            animate={{ opacity: [0, 0.5, 0] }}
-                                            transition={{
-                                                repeat: Infinity,
-                                                duration: 3,
-                                                repeatDelay: 2
-                                            }}
-                                        />
+                                        Passer&nbsp;au&nbsp;jury&nbsp;&rarr;
                                     </motion.button>
                                 </motion.div>
                             </>
                         )}
                     </motion.div>
                 )}
+
             </AnimatePresence>
+
+
+            {/* ─── JURY phase ─── */}
+            <AnimatePresence mode="wait">
+                {phase === 'jury' && (
+                    <motion.div
+                        key="jury-wrapper"
+                        className="absolute inset-0 flex items-center justify-center bg-black/90 px-4"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        <div className="w-full max-w-lg text-center">
+                            <h2 className="text-3xl md:text-4xl font-bold text-white mb-10">
+                                NOS&nbsp;MEMBRES&nbsp;DU&nbsp;JURY
+                            </h2>
+
+                            {/* Carte unique, centrée */}
+                            <AnimatePresence mode="wait">
+                                {jury[currentJuryIndex] && (
+                                    <motion.div
+                                        key={jury[currentJuryIndex].id}
+                                        variants={juryCardVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                        className="bg-gradient-to-b from-white/5 to-white/10 backdrop-blur-sm
+                         rounded-2xl p-8 shadow-2xl flex flex-col items-center"
+                                    >
+                                        <img
+                                            src={jury[currentJuryIndex].photo || '/images/placeholder.png'}
+                                            alt={jury[currentJuryIndex].name}
+                                            className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover
+                           border-4 border-white/20 shadow-lg mb-6"
+                                        />
+
+                                        <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                                            {jury[currentJuryIndex].name}
+                                        </h3>
+
+                                        <p className="text-white/60 text-sm">
+                                            {currentJuryIndex + 1}/{jury.length}
+                                        </p>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+                    </motion.div>
+
+
+
+                )}
+            </AnimatePresence>
+
+
+
+            
+
+
+            {/* ─── PARTNERS phase ─── */}
+            <AnimatePresence>
+                {phase === 'partners' && partners.length > 0 && (
+                    <motion.div
+                        key="partner-slide"
+                        className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 p-8 text-center"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                    >
+                        {/** partenaire courant */}
+                        <motion.div
+                            initial={{ scale: 0.8, y: 30 }}
+                            animate={{ scale: 1, y: 0 }}
+                            transition={{ type: 'spring', stiffness: 120 }}
+                            className="max-w-lg w-full glass-effect p-8 rounded-2xl border border-white/10"
+                        >
+                            {partners[currentPartnerIndex].logo && (
+                                <img
+                                    src={partners[currentPartnerIndex].logo}
+                                    alt={partners[currentPartnerIndex].name}
+                                    className="h-32 mx-auto mb-6 object-contain"
+                                />
+                            )}
+                            <h3 className="text-3xl font-bold text-white mb-4">
+                                {partners[currentPartnerIndex].name}
+                            </h3>
+
+                            {partners[currentPartnerIndex].speech && (
+                                <p className="text-white/80 leading-relaxed whitespace-pre-wrap">
+                                    {partners[currentPartnerIndex].speech}
+                                </p>
+                            )}
+                        </motion.div>
+
+                        {/** boutons navigation */}
+                        <div className="mt-10 flex gap-4">
+                            {currentPartnerIndex < partners.length - 1 ? (
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() =>
+                                        setCurrentPartnerIndex(idx => idx + 1)
+                                    }
+                                    className="px-6 py-3 bg-yellow-400 text-blue-900 font-semibold rounded-full shadow-lg"
+                                >
+                                    Partenaire suivant →
+                                </motion.button>
+                            ) : (
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={onEnd}
+                                    className="px-8 py-3 bg-gradient-to-r from-purple-500 to-blue-600 text-white font-semibold rounded-full shadow-lg"
+                                >
+                                    Lancer le match
+                                </motion.button>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
 
 
 

@@ -24,7 +24,8 @@ import confetti from 'canvas-confetti';
 import { DonutTimer } from './components/DonutTimer';
 import RubriqueDisplay from './components/RubriqueDisplay';
 import MatchIntro from "./components/MatchIntro.tsx";
-
+import rawInitData from '../public/initial-data.json';
+import { v4 as uuid } from 'uuid';   // npm i uuid
 
 // Types
 interface Player {
@@ -34,6 +35,10 @@ interface Player {
   isActive: boolean;
   pointsScored: number;
 }
+
+// types.ts  (ou en haut de App.tsx si tu gardes tout dans un seul fichier)
+export interface Partner   { id: string; name: string; logo?: string; speech?: string }
+export interface JuryMember{ id: string; name: string; photo?: string }
 
 
 interface Team {
@@ -66,6 +71,101 @@ const GAME_BGM: string[] = [
   '/sounds/audio_nicki.mp3',
   '/sounds/santa_theresa_mp3_32445.mp3'
 ];
+
+
+function PartnerForm({ onAdd }: { onAdd: (n:string,f?:File)=>void }) {
+  const [name,setName]=useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  return (
+      <div className="flex gap-2">
+        <input
+            value={name}
+            onChange={e=>setName(e.target.value)}
+            placeholder="Nom du partenaire"
+            className="flex-1 px-3 py-2 rounded-xl glass-effect text-white"
+        />
+        <input ref={fileRef} type="file" accept="image/*"
+               className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"/>
+        <button
+            onClick={()=>{
+              onAdd(name,fileRef.current?.files?.[0]);
+              setName(''); if(fileRef.current) fileRef.current.value='';
+            }}
+            className="px-4 bg-yellow-400 text-blue-900 rounded-xl">Ajouter</button>
+      </div>
+  );
+}
+
+function JuryForm({ onAdd }: { onAdd: (n:string,f?:File)=>void }) {
+  const [name,setName]=useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  return (
+      <div className="flex gap-2">
+        <input
+            value={name}
+            onChange={e=>setName(e.target.value)}
+            placeholder="Nom du juré"
+            className="flex-1 px-3 py-2 rounded-xl glass-effect text-white"
+        />
+        <input ref={fileRef} type="file" accept="image/*"
+               className="w-36 text-sm file:bg-yellow-400 file:text-blue-900 file:px-2 file:py-1 file:rounded-lg file:cursor-pointer"/>
+        <button
+            onClick={()=>{
+              onAdd(name,fileRef.current?.files?.[0]);
+              setName(''); if(fileRef.current) fileRef.current.value='';
+            }}
+            className="px-4 bg-yellow-400 text-blue-900 rounded-xl">Ajouter</button>
+      </div>
+  );
+}
+
+function PartnersBanner({ partners }: { partners: Partner[] }) {
+  /** défilement circulaire toutes les 8 s */
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    if (partners.length <= 1) return;                // rien à faire
+    const id = setInterval(
+        () => setIdx((p) => (p + 1) % partners.length),
+        8000
+    );
+    return () => clearInterval(id);
+  }, [partners.length]);
+
+  if (partners.length === 0) return null;
+
+  const current = partners[idx];
+
+  return (
+
+      <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+      <AnimatePresence mode="wait">
+          <motion.div
+              key={current.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.6 }}
+              className="flex items-center gap-4 bg-black/60 backdrop-blur-lg
++                   px-6 py-3 rounded-full border border-white/10 shadow-2xl" >
+            {current.logo && (
+                         /* logo un peu plus haut : 48 px sur desktop */
+                <img src={current.logo} alt={current.name}
+                      className="h-10 md:h-12 w-auto object-contain"/>
+                 )}
+             <span className="text-white/90 text-base md:text-lg font-semibold">
+            {current.name}
+          </span>
+          </motion.div>
+        </AnimatePresence>
+
+
+
+      </div>
+  );
+}
 
 
 function App() {
@@ -102,17 +202,16 @@ function App() {
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'game' | 'history'>('game');
   const [isIdentificationFullScreen, setIsIdentificationFullScreen] = useState(false);
+  const [partners,   setPartners]   = useState<Partner[]>([])
+  const [jury,       setJury]       = useState<JuryMember[]>([])
+  const [setupStep,  setSetupStep]  = useState<0|1|2|3|4>(0)   // 🆕 5 étapes
 
   const [presenter, setPresenter] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
   const [organizer, setOrganizer] = useState<{ name: string; photo: string }>({ name: '', photo: '' });
   const [phase, setPhase] = useState<'title'|'teams'|'teamIntro'|'players'|'presenter'|'organizer'>('title');
   const bgmRef        = useRef<HTMLAudioElement | null>(null);   // player courant
   const [trackIndex, setTrackIndex] = useState(0);               // piste en cours
-
-
-
   const [celebratingPlayer, setCelebratingPlayer] = useState<{ player: Player, teamColor: string } | null>(null);
-
   // Refs
   const playerInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
   const timerCircleRef = useRef<SVGCircleElement>(null);
@@ -133,6 +232,28 @@ function App() {
   const [playMilestone] = useSound('/sounds/milestone.mp3', { volume: isMuted ? 0 : 0.7 });
   const [playTeamChange] = useSound('/sounds/team-change.mp3', { volume: isMuted ? 0 : 0.4 });
   const [playButtonClick] = useSound('/sounds/button-click.mp3', { volume: isMuted ? 0 : 0.3 });
+
+  // ───────────────── helpers upload → base64
+  const fileToDataURL = (file: File): Promise<string> =>
+      new Promise(res => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.readAsDataURL(file);
+      });
+
+// logique Partenaire
+  const addPartner = async (name: string, file?: File) => {
+    if (!name) return;
+    const logo = file ? await fileToDataURL(file) : undefined;
+    setPartners(prev => [...prev, { id: Date.now().toString(), name, logo }]);
+  };
+
+// logique Jury
+  const addJuryMember = async (name: string, file?: File) => {
+    if (!name) return;
+    const photo = file ? await fileToDataURL(file) : undefined;
+    setJury(prev => [...prev, { id: Date.now().toString(), name, photo }]);
+  };
 
 
   useEffect(() => {
@@ -170,7 +291,38 @@ function App() {
   }, [isMuted]);
 
 
+  useEffect(() => {
+    // ⚠️ On ne veut l’initialiser qu’une seule fois :
+    if (gamePhase !== 'setup') return;
 
+    const data = rawInitData as any;               // typage rapide
+    // 1. Teams
+    setTeams(
+        data.teams.map((t: any, idx: number): Team => ({
+          id: uuid(),
+          name: t.name,
+          color: t.color ?? TEAM_COLORS[idx % TEAM_COLORS.length],
+          isTeamA: idx === 0,
+          score: 0,
+          lastScoreChange: 0,
+          scoreUpdateTimestamp: 0,
+          players: t.players.map((p:any):Player => ({
+            id: uuid(),
+            name: p.name ?? p,          // on accepte les deux syntaxes
+            photo: p.photo,             // ← on copie la valeur si présente
+            isActive: true,
+            pointsScored: 0
+          }))
+
+        }))
+    );
+
+    // 2. Partenaires, jury, présentateur, organisateur
+    setPartners( data.partners  .map((p:any)=>({ id:uuid(), ...p })) );
+    setJury    ( data.jury      .map((j:any)=>({ id:uuid(), ...j })) );
+    setPresenter(data.presenter ?? { name:'', photo:'' });
+    setOrganizer(data.organizer ?? { name:'', photo:'' });
+  }, []);           // <- tableau vide : exécuté une fois
 
   useEffect(() => {
     if (isRunning && time > 0) {
@@ -1536,6 +1688,8 @@ function App() {
             teams={teams.map(({ id, name, color, players }) => ({ id, name, color, players }))}
             presenter={presenter}
             organizer={organizer}
+            jury={jury}                 // ← NEW
+            partners={partners}         // ← NEW
             duration={7000}
             onEnd={() => { setGamePhase('game'); startTimer(maxTime); }}
         />
@@ -1686,6 +1840,46 @@ function App() {
                       }}
                   />
                 </div>
+                {/* ───────── PARTENAIRES ───────── */}
+                <div className="space-y-2 mt-8">
+                  <h3 className="text-yellow-400 font-medium">Partenaires</h3>
+
+                  <PartnerForm onAdd={addPartner} />
+
+                  {/* liste */}
+                  <div className="grid md:grid-cols-2 gap-2">
+                    {partners.map(p => (
+                        <div key={p.id} className="glass-effect flex items-center p-2 rounded">
+                          {p.logo && <img src={p.logo} className="h-8 w-8 object-cover rounded mr-2" />}
+                          <span className="flex-1 text-white truncate">{p.name}</span>
+                          <button
+                              onClick={() => setPartners(prev => prev.filter(x => x.id !== p.id))}
+                              className="text-red-400 text-sm">✕</button>
+                        </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ───────── JURY ───────── */}
+                <div className="space-y-2 mt-8">
+                  <h3 className="text-yellow-400 font-medium">Jury</h3>
+
+                  <JuryForm onAdd={addJuryMember} />
+
+                  {/* liste */}
+                  <div className="grid md:grid-cols-2 gap-2">
+                    {jury.map(m => (
+                        <div key={m.id} className="glass-effect flex items-center p-2 rounded">
+                          {m.photo && <img src={m.photo} className="h-8 w-8 object-cover rounded-full mr-2" />}
+                          <span className="flex-1 text-white truncate">{m.name}</span>
+                          <button
+                              onClick={() => setJury(prev => prev.filter(x => x.id !== m.id))}
+                              className="text-red-400 text-sm">✕</button>
+                        </div>
+                    ))}
+                  </div>
+                </div>
+
                 <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -1710,7 +1904,14 @@ function App() {
   return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-700 to-blue-900 gradient-animate p-4 flex flex-col">
         <TeamScores teams={teams} />
-        <AnimatePresence>{showAlert && <MilestoneAlert message={showAlert} />}</AnimatePresence>
+        <AnimatePresence>
+          {showAlert && <MilestoneAlert message={showAlert} />}
+        </AnimatePresence>
+
+        {/* Logos des partenaires pendant la partie */}
+        {gamePhase === 'game' && <PartnersBanner partners={partners} />}
+
+
         <div className="flex justify-between items-center mb-4">
           <motion.h1 initial={{ y: -20 }} animate={{ y: 0 }} className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-200 flex items-center gap-3">
             <Trophy className="h-8 w-8 text-yellow-400" />
@@ -1759,6 +1960,7 @@ function App() {
                       </button>
                     </div>
                   </div>
+
                   {activeTab === 'game' ? (
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
