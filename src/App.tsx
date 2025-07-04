@@ -219,6 +219,8 @@ function App() {
   const teamBCardRef = useRef<HTMLDivElement>(null);
   // refs supplémentaires pour chaque équipe
   const photoInputRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+  const [zoomLevel, setZoomLevel] = useState(1);
+
 
 
   // Animations
@@ -1133,8 +1135,8 @@ function App() {
     playButtonClick();
   };
 
-  const PlayerCelebration = () => {
-    if (!celebratingPlayer) return null;
+  const PlayerCelebration = ({ player, teamColor }: { player: Player; teamColor: string }) => {
+    if (!player) return null;
 
     return (
         <motion.div
@@ -1143,23 +1145,43 @@ function App() {
             exit={{ opacity: 0, scale: 0.5 }}
             className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none"
         >
+          {/* Photo du joueur en arrière-plan avec transparence */}
+          {player.photo && (
+              <img
+                  src={player.photo}
+                  alt={player.name}
+                  className="absolute inset-0 w-64 h-64 object-cover rounded-full opacity-30"
+              />
+          )}
+
+          {/* Cadre doré et étoile animée */}
           <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                y: [0, -10, 0],
-                rotate: [0, 5, -5, 0]
-              }}
+              animate={{ scale: [1, 1.1, 1], y: [0, -10, 0], rotate: [0, 5, -5, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-blue-900 px-8 py-6 rounded-xl font-bold text-xl shadow-xl border-4 border-yellow-300 text-center"
-              style={{ backgroundColor: `${celebratingPlayer.teamColor}80` }}
+              className="bg-gradient-to-br from-yellow-400 to-yellow-500 text-blue-900 px-8 py-6 rounded-xl font-bold text-xl shadow-xl border-4 border-yellow-300 text-center relative z-10"
+              style={{ backgroundColor: `${teamColor}80` }}
           >
             <div className="text-4xl mb-2">🌟</div>
-            <div>{celebratingPlayer.player.name}</div>
-            <div className="text-2xl mt-2">+{celebratingPlayer.points} points</div>
+            <div>{player.name}</div>
+            <div className="text-2xl mt-2">+{player.pointsScored} points</div>
+          </motion.div>
+
+          {/* Étoile flottante animée */}
+          <motion.div
+              animate={{ y: [-10, 10, -10] }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: [0.25, 0.46, 0.45, 0.94], // Cubic bezier
+              }}
+              className="absolute text-6xl text-yellow-400 animate-float"
+          >
+            ⭐
           </motion.div>
         </motion.div>
     );
   };
+
 
   const MilestoneAlert = ({ message }: { message: string }) => {
     const emojis = ['🏆', '🎯', '🌟', '💎', '👑'];
@@ -1554,13 +1576,32 @@ function App() {
             </p>
           </div>
           {/* Miniature, seulement si player.photo existe */}
+          <div className="mt-4">
+            <input
+                type="range"
+                min="0.5"
+                max="2"
+                step="0.1"
+                value={zoomLevel}
+                onChange={(e) => setZoomLevel(parseFloat(e.target.value))}
+                className="w-full"
+            />
+            <span className="text-white">Zoom: {zoomLevel.toFixed(1)}</span>
+          </div>
+
           {player.photo && (
-              <img
-                  src={player.photo}
-                  alt={player.name}
-                  className="w-full h-24 object-cover rounded-lg mb-1"
-              />
+              <div className="w-full h-24 rounded-lg mb-1 bg-white/10 relative overflow-hidden">
+                <img
+                    src={player.photo}
+                    alt={player.name}
+                    className="absolute inset-0 w-full h-full object-contain"
+                    style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }} // Applique le zoom centré
+                />
+              </div>
           )}
+
+
+
 
 
           {/* Ligne 2: Points et boutons +/- */}

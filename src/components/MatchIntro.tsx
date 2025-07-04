@@ -44,6 +44,13 @@ interface MatchIntroProps {
 
 
 
+const playerFloatVariants: Variants = {
+    hidden: { y: 0 },
+    visible: {
+        y: [0, -10, 0],
+        transition: { duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' },
+    }
+};
 
 
 // Nouveaux variants d'animation
@@ -164,6 +171,32 @@ const counterVariants: Variants = {
         scale: 1,
         transition: {
             duration: 0.5,
+            ease: "backOut"
+        }
+    }
+};
+
+// Ajoute ces variants en haut du fichier
+const playerGlowVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+        opacity: 1,
+        transition: {
+            repeat: Infinity,
+            repeatType: "reverse",
+            duration: 2,
+            ease: "easeInOut"
+        }
+    }
+};
+
+const playerNumberGlowVariants: Variants = {
+    hidden: { opacity: 0, scale: 0.8 },
+    visible: {
+        opacity: 1,
+        scale: 1,
+        transition: {
+            duration: 0.6,
             ease: "backOut"
         }
     }
@@ -464,14 +497,14 @@ export default function MatchIntro({
 
                             {/* Titre principal */}
                             <motion.h1
-                                className="relative text-6xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 uppercase tracking-wider text-center"
+                                className="relative text-20xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 uppercase tracking-wider text-center"
                             >
                                 {matchTitle}
                             </motion.h1>
 
                             {/* Sous-titre */}
                             <motion.p
-                                className="relative mt-6 text-2xl text-white/80 text-center"
+                                className="relative mt-6 text-6xl text-white/80 text-center"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.8 }}
@@ -512,7 +545,7 @@ export default function MatchIntro({
                                         {team.logo ? (
                                             <img src={team.logo} alt={team.name} className="w-3/4 h-3/4 object-contain" />
                                         ) : (
-                                            <span className="text-4xl font-bold text-white">{team.name.charAt(0)}</span>
+                                            <span className="text-10xl font-bold text-white">{team.name.charAt(0)}</span>
                                         )}
                                     </div>
                                 </div>
@@ -640,24 +673,56 @@ export default function MatchIntro({
                                     >
                                         <div className="flex flex-col">
                                             {/* Photo */}
-                                            <motion.div
-                                                className="relative w-full aspect-[3/4] bg-gradient-to-b from-white/10 to-white/5 overflow-hidden"
-                                                variants={photoVariants}
-                                            >
-                                                {pl.photo ? (
-                                                    <img
-                                                        src={pl.photo}
-                                                        alt={pl.name}
-                                                        className="absolute inset-0 w-full h-full object-contain"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center">
-                      <span className="text-8xl font-bold text-white/30">
-                        {pl.number ?? '?'}
-                      </span>
-                                                    </div>
-                                                )}
-                                                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent" />
+
+                                            <motion.div className="relative w-full aspect-[3/4] bg-gradient-to-b from-white/10 to-white/5 overflow-hidden">
+                                                {/* Halo dynamique derrière la photo */}
+                                                <motion.div
+                                                    className="absolute inset-0 rounded-full"
+                                                    style={{
+                                                        background: `radial-gradient(circle, ${teams[currentTeamIndex].color} 0%, transparent 70%)`
+                                                    }}
+                                                    variants={playerGlowVariants}
+                                                    initial="hidden"
+                                                    animate="visible"
+                                                />
+
+                                                {/* Conteneur photo avec effet de reflet */}
+                                                <div className="relative z-10 w-full h-full overflow-hidden">
+                                                    {pl.photo ? (
+                                                        <>
+                                                            <img
+                                                                src={pl.photo}
+                                                                alt={pl.name}
+                                                                className="absolute inset-0 w-full h-full object-cover"
+                                                            />
+                                                            {/* Effet de reflet */}
+                                                            <motion.div
+                                                                className="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent"
+                                                                initial={{ opacity: 0 }}
+                                                                animate={{ opacity: 1 }}
+                                                                transition={{ delay: 0.4 }}
+                                                            />
+                                                        </>
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <motion.span
+                                                                className="text-8xl font-bold text-white/30"
+                                                                variants={playerNumberGlowVariants}
+                                                            >
+                                                                {pl.number ?? '?'}
+                                                            </motion.span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Barre colorée animée en bas */}
+                                                <motion.div
+                                                    className="absolute bottom-0 left-0 right-0 h-2"
+                                                    style={{ backgroundColor: teams[currentTeamIndex].color }}
+                                                    initial={{ scaleX: 0 }}
+                                                    animate={{ scaleX: 1 }}
+                                                    transition={{ duration: 0.8, delay: 0.3 }}
+                                                />
                                             </motion.div>
 
                                             {/* Infos joueur */}
@@ -674,6 +739,7 @@ export default function MatchIntro({
 
                                                 {/* Statistiques uniquement pour la DERNIÈRE carte + après le petit délai */}
                                                 {i === shownPlayers.length - 1 && showPlayerStats && pl.stats && (
+                                                    // Remplace le conteneur des stats par ceci
                                                     <motion.div
                                                         className="grid grid-cols-2 gap-4 mt-2"
                                                         initial="hidden"
@@ -683,13 +749,41 @@ export default function MatchIntro({
                                                             <motion.div
                                                                 key={k}
                                                                 custom={idx}
-                                                                variants={statItemVariants}
-                                                                className="bg-white/5 rounded-lg p-3"
+                                                                variants={{
+                                                                    hidden: { opacity: 0, y: 20, scale: 0.8 },
+                                                                    visible: {
+                                                                        opacity: 1,
+                                                                        y: 0,
+                                                                        scale: 1,
+                                                                        transition: {
+                                                                            delay: 0.5 + idx * 0.15,
+                                                                            duration: 0.6,
+                                                                            type: "spring",
+                                                                            stiffness: 300
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="bg-white/5 rounded-lg p-3 relative overflow-hidden"
                                                             >
-                                                                <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">
-                                                                    {k}
+                                                                {/* Effet de fond animé */}
+                                                                <motion.div
+                                                                    className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"
+                                                                    initial={{ x: "-100%" }}
+                                                                    animate={{ x: "100%" }}
+                                                                    transition={{
+                                                                        delay: 0.8 + idx * 0.15,
+                                                                        duration: 1.5,
+                                                                        repeat: Infinity,
+                                                                        repeatDelay: 3
+                                                                    }}
+                                                                />
+
+                                                                <div className="relative z-10">
+                                                                    <div className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+                                                                        {k}
+                                                                    </div>
+                                                                    <div className="text-2xl font-bold text-white">{v}</div>
                                                                 </div>
-                                                                <div className="text-2xl font-bold text-white">{v}</div>
                                                             </motion.div>
                                                         ))}
                                                     </motion.div>
