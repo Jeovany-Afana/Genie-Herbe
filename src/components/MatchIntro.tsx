@@ -5,6 +5,15 @@ import Confetti from 'react-confetti';
 import canvasConfetti from 'canvas-confetti';
 import  { Partner, JuryMember } from '../App.tsx'
 
+
+// en haut de MatchIntro.tsx, sous tes imports
+const CREATOR = {
+    name: "Joe AFANA",
+    photo: "../../public/Finale/logoMirach.png"  // ← chemin relatif vers ton logo
+};
+
+
+
 interface Player {
     id: string;
     name: string;
@@ -215,7 +224,7 @@ export default function MatchIntro({
                                        onEnd,
                                        matchTitle = "GRANDE FINALE"
                                    }: MatchIntroProps) {
-    const [phase, setPhase] = useState<'title' | 'teams' | 'teamIntro' | 'presenter' | 'jury' | 'partners' | 'organizer' |  'players' | 'exit'>('title');
+    const [phase, setPhase] = useState<'title' | 'branding' |'teams' | 'teamIntro' | 'presenter' | 'jury' | 'partners' | 'organizer' |  'players' | 'exit'>('title');
     const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
     const [showPlayerStats, setShowPlayerStats] = useState(false);
@@ -441,28 +450,31 @@ export default function MatchIntro({
 
 
     useEffect(() => {
-        // Son d'intro dès le montage
         playSound('audio_nicki');
 
-        // Phase 1: Titre → équipes
-        const t1 = setTimeout(() => {
+        // 1) affiche le titre un peu plus longtemps (5 s)
+        const t1 = setTimeout(() => setPhase('branding'), 5000);
+
+        // 2) after 4 s de “Conçu par”, passe à la phase équipes (à 9 s)
+        const t2 = setTimeout(() => {
             setPhase('teams');
             fireConfetti(60);
             fireConfetti(120);
-        }, 3000);
+        }, 9000);
 
-        // Phase 2: Équipes → présentation de la première équipe
-        const t2 = setTimeout(() => {
-            startTeamPresentation(0);
-        }, 6000);
+        // 3) enfin, lance la présentation de la première équipe (à 15 s)
+        const t3 = setTimeout(() => startTeamPresentation(0), 15000);
 
         return () => {
             clearTimeout(t1);
             clearTimeout(t2);
+            clearTimeout(t3);
             clearInterval(playersIntervalRef.current!);
             clearTimeout(teamTimeoutRef.current!);
         };
     }, []);
+
+
 
     return (
         <div className="fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-50 overflow-hidden">
@@ -517,6 +529,29 @@ export default function MatchIntro({
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Phase 1.5 : “Conçu par” */}
+            <AnimatePresence>
+                {phase === 'branding' && (
+                    <motion.div
+                        className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
+                    >
+                        <h2 className="text-4xl md:text-6xl text-white/70 uppercase mb-6">Conçu par</h2>
+                        <img
+                            src={CREATOR.photo}
+                            alt={CREATOR.name}
+                            className="w-64 md:w-80 h-64 md:h-80 rounded-full object-cover mb-6 shadow-2xl"
+                        />
+                        <p className="text-5xl md:text-7xl font-extrabold text-white">{CREATOR.name}</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+
 
             {/* Phase 2: Présentation des équipes */}
             <AnimatePresence>
