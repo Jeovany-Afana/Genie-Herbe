@@ -24,11 +24,20 @@ export interface Question {
     id: string;
     text: string;
     hint?: string;
-    type: "single" | "multiple" | "identification";
-    answers: Answer[];
+
+    /* 🚩 Ajout de 'flag' */
+    type: "single" | "multiple" | "identification" | "flag";
+
+    /* pour single / multiple */
+    answers?: Answer[];
+    /* pour identification */
     clues?: { text: string; points: number; revealed: boolean }[];
     solution?: string;
+
+    /* pour flag */
+    imageUrl?: string;
 }
+
 
 export interface Rubrique {
     id: string;
@@ -162,12 +171,15 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
 
     const currentRubrique = rubriques[currentRubriqueIndex];
     const currentQuestion = currentRubrique.questions[currentQuestionIndex];
-    const isIdentification = currentQuestion?.type === "identification";
+    const isIdentOrFlag =
+        currentQuestion?.type === "identification" ||
+        currentQuestion?.type === "flag";
+
 
     return (
         <motion.div
             className={
-                isIdentification
+                isIdentOrFlag
                     ? "fixed inset-0 z-50 overflow-y-auto"
                     : "glass-effect rounded-2xl p-6 border-2 border-yellow-400/30 w-full max-w-2xl mx-auto relative overflow-hidden"
             }
@@ -488,7 +500,7 @@ const RubriqueDisplay: React.FC<RubriqueDisplayProps> = ({ teams }) => {
                         exit={{ opacity: 0, y: -50 }}
                         className="space-y-8"
                     >
-                        {currentQuestion && isIdentification ? (
+                        {currentQuestion && isIdentOrFlag ? (
                             <IdentificationQuestion
                                 question={currentQuestion}
                                 teams={teams}

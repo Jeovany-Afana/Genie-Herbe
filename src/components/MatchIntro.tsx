@@ -497,14 +497,16 @@ export default function MatchIntro({
 
                             {/* Titre principal */}
                             <motion.h1
-                                className="relative text-20xl md:text-8xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-300 uppercase tracking-wider text-center"
+                                className="relative text-[clamp(3rem,10vw,20rem)] md:text-[clamp(6rem,8vw,16rem)]
+             font-extrabold text-transparent bg-clip-text
+             bg-gradient-to-r from-white to-gray-300 uppercase tracking-wider text-center"
                             >
                                 {matchTitle}
                             </motion.h1>
 
                             {/* Sous-titre */}
                             <motion.p
-                                className="relative mt-6 text-6xl text-white/80 text-center"
+                                className="relative mt-6 text-[clamp(1.5rem,4vw,6rem)] text-white/80 text-center"
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 transition={{ delay: 0.8 }}
@@ -552,7 +554,7 @@ export default function MatchIntro({
 
                                 {/* Nom d'équipe */}
                                 <motion.h2
-                                    className="text-4xl font-bold text-center text-white mb-2"
+                                    className="text-[clamp(2.5rem,6vw,8rem)] font-bold text-center text-white mb-2"
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.8 }}
@@ -600,7 +602,7 @@ export default function MatchIntro({
                                 PRÉSENTATION DES JOUEURS
                             </motion.div>
                             <motion.h2
-                                className="text-5xl md:text-7xl font-bold text-white mb-4"
+                                className="text-[clamp(3rem,7vw,9rem)] font-bold text-white mb-4"
                                 style={{ color: teams[currentTeamIndex].color }}
                             >
                                 {teams[currentTeamIndex].name}
@@ -669,7 +671,8 @@ export default function MatchIntro({
                                         variants={playerCardVariants}
                                         initial="hidden"
                                         animate="visible"
-                                        className="bg-black/70 backdrop-blur-lg rounded-2xl overflow-hidden shadow-2xl"
+                                        className="bg-black/70 backdrop-blur-lg rounded-2xl overflow-hidden shadow-2xl
+                                                    transform-gpu scale-[1.12] md:scale-[1.18]"
                                     >
                                         <div className="flex flex-col">
                                             {/* Photo */}
@@ -880,7 +883,8 @@ export default function MatchIntro({
                             </div>
 
                             <motion.h2
-                                className="text-4xl md:text-5xl font-bold text-white mt-4 bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300"
+                                className="text-[clamp(3rem,7vw,8rem)] font-bold text-white mt-4
+             bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300"
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.3 }}
@@ -1038,11 +1042,12 @@ export default function MatchIntro({
                                         <img
                                             src={jury[currentJuryIndex].photo || '/images/placeholder.png'}
                                             alt={jury[currentJuryIndex].name}
-                                            className="w-40 h-40 md:w-48 md:h-48 rounded-full object-cover
-                           border-4 border-white/20 shadow-lg mb-6"
+                                            className="w-[clamp(12rem,30vw,22rem)] h-[clamp(12rem,30vw,22rem)]
+           rounded-full object-cover border-4 border-white/20 shadow-2xl mb-8"
+
                                         />
 
-                                        <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                                        <h3 className="text-[clamp(2.5rem,6vw,5rem)] font-bold text-white mb-2">
                                             {jury[currentJuryIndex].name}
                                         </h3>
 
@@ -1083,13 +1088,13 @@ export default function MatchIntro({
                             className="max-w-lg w-full glass-effect p-8 rounded-2xl border border-white/10"
                         >
                             {partners[currentPartnerIndex].logo && (
-                                <img
-                                    src={partners[currentPartnerIndex].logo}
-                                    alt={partners[currentPartnerIndex].name}
-                                    className="h-32 mx-auto mb-6 object-contain"
-                                />
-                            )}
-                            <h3 className="text-3xl font-bold text-white mb-4">
+                                     <img
+                                      src={partners[currentPartnerIndex].logo}
+                                   alt={partners[currentPartnerIndex].name}
+                                   className="h-48 w-auto mx-auto mb-8 object-contain"
+                                  />
+                                  )}
+                            <h3 className="text-[clamp(2.5rem,8vw,6rem)] font-extrabold text-white mb-6">
                                 {partners[currentPartnerIndex].name}
                             </h3>
 

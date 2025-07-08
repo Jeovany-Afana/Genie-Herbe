@@ -5,7 +5,7 @@ import introSound1 from '/sounds/intro1.mp3';
 import introSound2 from '/sounds/intro2.mp3';
 import clueRevealSound from '/sounds/clue-reveal.mp3';
 import letTheGame from '/sounds/let-the-game.mp3';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import {
     Check,
     Lock,
@@ -32,9 +32,10 @@ export interface IdentificationQuestionProps {
         id: string;
         text: string;
         hint?: string;
-        type: 'identification';
+        type: 'identification' | 'flag';
         clues?: IdentificationClue[];
         solution?: string;
+        imageUrl?: string;                      // ← URL du drapeau
     };
     teams: Team[];
     // Nouvelle prop qui permettra de notifier la fin de la question d’identification
@@ -366,11 +367,19 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
     const [revealedClues, setRevealedClues] = useState<number[]>([]);
     const [showSolution, setShowSolution] = useState(false);
     const [userGuess, setUserGuess] = useState('');
-    const [hasGuessed, setHasGuessed] = useState(false);
     const [showIntro, setShowIntro] = useState(true);
     const [revealingClue, setRevealingClue] = useState<number | null>(null);
     const [introStep, setIntroStep] = useState(0);
     const [currentTheme, setCurrentTheme] = useState(allThemes[0]);
+    const [hasGuessed, setHasGuessed] = useState(false);
+    const [isCorrect, setIsCorrect] = useState(false);
+
+
+    const isFlag = question.type === 'flag';
+    const isIdent = question.type === 'identification';
+    const shakeControls = useAnimation();
+
+
 
     // Note : ici revealedClasses est défini par l'utilisateur. Vous pouvez le modifier selon vos besoins.
     const revealedClasses = `border-[custom-color-based-on-currentTheme] bg-[custom-bg-based-on-currentTheme]`;
@@ -380,6 +389,15 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
     const playIntro2 = new Audio(introSound2);
     const playLetBegin = new Audio(letTheGame);
     const [playClueReveal] = useSound(clueRevealSound);
+
+    // ← **RESET** À CHAQUE CHANGEMENT DE QUESTION
+    useEffect(() => {
+        setRevealedClues([]);
+        setShowSolution(false);
+        setUserGuess('');
+        setHasGuessed(false);
+        setRevealingClue(null);
+    }, [question.id]);
 
     // Séquence d'intro avec useEffect
     useEffect(() => {
@@ -550,24 +568,45 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
     };
 
     const handleSubmitGuess = () => {
+        const guess = userGuess.trim().toLowerCase();
+        const answer = question.solution?.trim().toLowerCase() || "";
+
+        // on signale qu'on a essayé
         setHasGuessed(true);
-        if (userGuess.toLowerCase() === question.solution?.toLowerCase()) {
+
+        if (guess === answer) {
+            // Bonne réponse
+            setIsCorrect(true);
+            setShowSolution(true);
+
             confetti({
                 particleCount: 600,
                 spread: 150,
                 origin: { y: 0.6 },
-                colors: [currentTheme.color, currentTheme.secondaryColor, currentTheme.color],
+                colors: [currentTheme.color, currentTheme.secondaryColor],
                 shapes: ['circle', 'star'],
                 scalar: 2.5
             });
+
+            // **On n'appelle PAS onFinish()** ici : vous gérerez le passage à la suite vous-même.
+        } else {
+            // Mauvaise réponse → on secoue l'input
+            shakeControls.start({
+                x: [0, -10, 10, -10, 10, 0],
+                transition: { duration: 0.6 }
+            });
         }
-        setTimeout(() => {
-            onFinish && onFinish();
-        }, 3000);
     };
 
+
+
+
+
+
     return (
-        <div className={`relative overflow-hidden min-h-screen ${currentTheme.bgColor} text-white`}>
+        <div className={`relative overflow-hidden min-h-screen ${currentTheme.bgColor} text-white ${
+            (isIdent || isFlag) ? 'fixed inset-0 z-50 overflow-y-auto' : ''
+                }`}>
             <LightningStrike active={thunderEffect} color={currentTheme.color} />
 
             {/* SVG avec effet d'éclair */}
@@ -705,178 +744,221 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                 className="space-y-8 p-8 max-w-6xl mx-auto"
             >
                 {/* En-tête */}
-                <motion.div initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: "spring", stiffness: 300, delay: 0.5 }} className="text-center">
-                    <motion.div
-                        animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.2, 1] }}
-                        transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
-                        className="text-6xl mb-6"
-                    >
-                        {currentTheme.icon}
-                    </motion.div>
-                    <h2
-                        className="text-4xl font-bold mb-4"
-                        style={{
-                            background: `linear-gradient(45deg, ${currentTheme.color}, ${currentTheme.secondaryColor})`,
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent'
-                        }}
-                    >
-                        {question.text}
-                    </h2>
-                    {question.hint && (
-                        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }} className="text-xl italic text-white/80">
-                            {question.hint}
-                        </motion.p>
+                <motion.div
+                    initial={{ y: -50 }}
+                    animate={{ y: 0 }}
+                    transition={{ type: "spring", stiffness: 300, delay: 0.5 }}
+                    className="text-center"
+                >
+                    {isFlag ? (
+                        <>
+                            <motion.img
+                                src={question.imageUrl}
+                                alt="Drapeau à identifier"
+                                className="mx-auto w-full max-w-4xl h-auto object-contain rounded-lg border-2 mb-6"
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 1 }}
+                            />
+
+
+                            <motion.h2
+                                className="text-3xl font-bold"
+                                initial={{ y: 20, opacity: 0 }}
+                                animate={{ y: 0, opacity: 1 }}
+                                transition={{ delay: 0.5 }}
+                            >
+                                {question.text}
+                            </motion.h2>
+                        </>
+                    ) : (
+                        <>
+                            <motion.div
+                                animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.2, 1] }}
+                                transition={{ repeat: Infinity, duration: 5, ease: "easeInOut" }}
+                                className="text-6xl mb-6"
+                            >
+                                {currentTheme.icon}
+                            </motion.div>
+                            <h2
+                                className="text-4xl font-bold mb-4"
+                                style={{
+                                    background: `linear-gradient(45deg, ${currentTheme.color}, ${currentTheme.secondaryColor})`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent'
+                                }}
+                            >
+                                {question.text}
+                            </h2>
+                            {question.hint && (
+                                <motion.p
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 1 }}
+                                    className="text-xl italic text-white/80"
+                                >
+                                    {question.hint}
+                                </motion.p>
+                            )}
+                        </>
                     )}
                 </motion.div>
 
                 {/* Indices */}
-                <div className="space-y-6">
+                {!isFlag && (
                     <div className="space-y-6">
-                        <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
-                            <motion.div
-                                animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
-                                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                            >
-                                {currentTheme.indiceIcon ?? <Fingerprint className="h-8 w-8" />}
-                            </motion.div>
-                            Indices à découvrir
-                        </h3>
-
-                        {/* Vérification si le premier indice est vide */}
-                        {(!question.clues?.[0]?.text || question.clues[0].text.trim() === '') ? (
-                            <motion.div
-                                initial={{ opacity: 0, y: 50 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.8 }}
-                                className="text-center py-16"
-                            >
-                                <motion.h2
-                                    className="text-5xl font-bold mb-6"
-                                    style={{
-                                        background: `linear-gradient(45deg, ${currentTheme.color}, ${currentTheme.secondaryColor})`,
-                                        WebkitBackgroundClip: 'text',
-
-                                    }}
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{
-                                        scale: 1,
-                                        opacity: 1,
-                                        textShadow: [
-                                            `0 0 10px ${currentTheme.color}`,
-                                            `0 0 20px ${currentTheme.secondaryColor}`,
-                                            `0 0 10px ${currentTheme.color}`
-                                        ]
-                                    }}
-                                    transition={{
-                                        duration: 1.5,
-                                        repeat: Infinity,
-                                        repeatType: "reverse"
-                                    }}
+                        <div className="space-y-6">
+                            <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
+                                <motion.div
+                                    animate={{ scale: [1, 1.3, 1], rotate: [0, 10, -10, 0] }}
+                                    transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
                                 >
-                                    {currentTheme.emptyClueMessage || "RÉSOLVEZ L'ÉNIGME"}
-                                </motion.h2>
-                                <motion.p
-                                    className="text-xl text-white/70"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    transition={{ delay: 0.5 }}
+                                    {currentTheme.indiceIcon ?? <Fingerprint className="h-8 w-8" />}
+                                </motion.div>
+                                Indices à découvrir
+                            </h3>
+
+                            {/* Vérification si le premier indice est vide */}
+                            {(!question.clues?.[0]?.text || question.clues[0].text.trim() === '') ? (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 50 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.8 }}
+                                    className="text-center py-16"
                                 >
-                                    Utilisez les indices sonores pour trouver la solution
-                                </motion.p>
-                            </motion.div>
-                        ) : (
-                            <div className="grid grid-cols-1 gap-6">
-                                {question.clues?.map((clue, index) => (
-                                    <motion.div
-                                        key={index}
-                                        layout
-                                        initial={{ opacity: 0, y: 50 }}
-                                        animate={{
-                                            opacity: 1,
-                                            y: 0,
-                                            transition: { delay: index * 0.2 + 1, type: 'spring', stiffness: 300 }
+                                    <motion.h2
+                                        className="text-5xl font-bold mb-6"
+                                        style={{
+                                            background: `linear-gradient(45deg, ${currentTheme.color}, ${currentTheme.secondaryColor})`,
+                                            WebkitBackgroundClip: 'text'
                                         }}
-                                        whileHover={{ scale: 1.03 }}
-                                        onClick={() => handleRevealClue(index)}
-                                        className={`p-6 rounded-xl cursor-pointer transition-all relative overflow-hidden border-2 ${
-                                            revealedClues.includes(index) ? revealedClasses : 'border-gray-700 bg-gray-800 hover:border-yellow-400/50'
-                                        }`}
+                                        initial={{ scale: 0.8, opacity: 0 }}
+                                        animate={{
+                                            scale: 1,
+                                            opacity: 1,
+                                            textShadow: [
+                                                `0 0 10px ${currentTheme.color}`,
+                                                `0 0 20px ${currentTheme.secondaryColor}`,
+                                                `0 0 10px ${currentTheme.color}`
+                                            ]
+                                        }}
+                                        transition={{
+                                            duration: 1.5,
+                                            repeat: Infinity,
+                                            repeatType: "reverse"
+                                        }}
                                     >
-                                        <AnimatePresence>
-                                            {revealingClue === index && (
+                                        {currentTheme.emptyClueMessage || "RÉSOLVEZ L'ÉNIGME"}
+                                    </motion.h2>
+                                    <motion.p
+                                        className="text-xl text-white/70"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ delay: 0.5 }}
+                                    >
+                                        Utilisez les indices sonores pour trouver la solution
+                                    </motion.p>
+                                </motion.div>
+                            ) : (
+                                <div className="grid grid-cols-1 gap-6">
+                                    {question.clues?.map((clue, index) => (
+                                        <motion.div
+                                            key={index}
+                                            layout
+                                            initial={{ opacity: 0, y: 50 }}
+                                            animate={{
+                                                opacity: 1,
+                                                y: 0,
+                                                transition: { delay: index * 0.2 + 1, type: 'spring', stiffness: 300 }
+                                            }}
+                                            whileHover={{ scale: 1.03 }}
+                                            onClick={() => handleRevealClue(index)}
+                                            className={`p-6 rounded-xl cursor-pointer transition-all relative overflow-hidden border-2 ${
+                                                revealedClues.includes(index)
+                                                    ? revealedClasses
+                                                    : 'border-gray-700 bg-gray-800 hover:border-yellow-400/50'
+                                            }`}
+                                        >
+                                            <AnimatePresence>
+                                                {revealingClue === index && (
+                                                    <motion.div
+                                                        initial={{ scale: 0 }}
+                                                        animate={{
+                                                            scale: 15,
+                                                            opacity: 0,
+                                                            transition: { duration: 1.2 }
+                                                        }}
+                                                        className="absolute inset-0 rounded-full"
+                                                        style={{
+                                                            background: `radial-gradient(circle, ${hexToRgba(currentTheme.color, 0.8)} 0%, ${hexToRgba(currentTheme.color, 0)} 70%)`
+                                                        }}
+                                                    />
+                                                )}
+                                            </AnimatePresence>
+                                            <div className="flex items-center gap-5">
                                                 <motion.div
-                                                    initial={{ scale: 0 }}
+                                                    className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 ${
+                                                        revealedClues.includes(index)
+                                                            ? currentTheme.submitButtonClass
+                                                            : 'bg-gray-700 text-gray-400'
+                                                    }`}
                                                     animate={{
-                                                        scale: 15,
-                                                        opacity: 0,
-                                                        transition: { duration: 1.2 }
+                                                        rotate: revealedClues.includes(index) ? 360 : 0,
+                                                        scale: revealingClue === index ? [1, 1.3, 1] : 1
                                                     }}
-                                                    className="absolute inset-0 rounded-full"
-                                                    style={{
-                                                        background: `radial-gradient(circle, ${hexToRgba(currentTheme.color, 0.8)} 0%, ${hexToRgba(currentTheme.color, 0)} 70%)`
-                                                    }}
-                                                />
-                                            )}
-                                        </AnimatePresence>
-                                        <div className="flex items-center gap-5">
-                                            <motion.div
-                                                className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 ${
-                                                    revealedClues.includes(index)
-                                                        ? currentTheme.submitButtonClass
-                                                        : 'bg-gray-700 text-gray-400'
-                                                }`}
-                                                animate={{ rotate: revealedClues.includes(index) ? 360 : 0, scale: revealingClue === index ? [1, 1.3, 1] : 1 }}
-                                                transition={{ duration: 1, ease: "easeOut" }}
-                                            >
-                                                {revealedClues.includes(index) ? <Check className="h-7 w-7" /> : <Lock className="h-6 w-6" />}
-                                            </motion.div>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center">
-                <span className={`text-xl font-medium ${revealedClues.includes(index) ? currentTheme.textColor : 'text-gray-400'}`}>
-                  Indice {index + 1} - {clue.points} pts
-                </span>
-                                                    {revealedClues.includes(index) && (
-                                                        <motion.span
-                                                            animate={{ scale: [1, 1.4, 1], rotate: [0, 15, -15, 0] }}
-                                                            transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                                                            className="text-3xl"
-                                                        >
-                                                            {currentTheme.emojis[index % currentTheme.emojis.length]}
-                                                        </motion.span>
-                                                    )}
-                                                </div>
-                                                <AnimatePresence>
-                                                    {revealedClues.includes(index) ? (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, height: 0 }}
-                                                            animate={{ opacity: 1, height: 'auto', transition: { delay: 0.5, duration: 0.8 } }}
-                                                            exit={{ opacity: 0, height: 0 }}
-                                                            className="mt-3"
-                                                        >
-                                                            <motion.p
-                                                                className="text-white text-xl"
-                                                                initial={{ opacity: 0 }}
-                                                                animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
+                                                    transition={{ duration: 1, ease: "easeOut" }}
+                                                >
+                                                    {revealedClues.includes(index) ? <Check className="h-7 w-7" /> : <Lock className="h-6 w-6" />}
+                                                </motion.div>
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-center">
+                    <span className={`text-xl font-medium ${
+                        revealedClues.includes(index) ? currentTheme.textColor : 'text-gray-400'
+                    }`}>
+                      Indice {index + 1} - {clue.points} pts
+                    </span>
+                                                        {revealedClues.includes(index) && (
+                                                            <motion.span
+                                                                animate={{ scale: [1, 1.4, 1], rotate: [0, 15, -15, 0] }}
+                                                                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+                                                                className="text-3xl"
                                                             >
-                                                                {clue.text}
+                                                                {currentTheme.emojis[index % currentTheme.emojis.length]}
+                                                            </motion.span>
+                                                        )}
+                                                    </div>
+                                                    <AnimatePresence>
+                                                        {revealedClues.includes(index) ? (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, height: 0 }}
+                                                                animate={{ opacity: 1, height: 'auto', transition: { delay: 0.5, duration: 0.8 } }}
+                                                                exit={{ opacity: 0, height: 0 }}
+                                                                className="mt-3"
+                                                            >
+                                                                <motion.p
+                                                                    className="text-white text-xl"
+                                                                    initial={{ opacity: 0 }}
+                                                                    animate={{ opacity: 1, transition: { delay: 1, duration: 1 } }}
+                                                                >
+                                                                    {clue.text}
+                                                                </motion.p>
+                                                            </motion.div>
+                                                        ) : (
+                                                            <motion.p className="text-gray-400 italic mt-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                                                Cliquez pour révéler
                                                             </motion.p>
-                                                        </motion.div>
-                                                    ) : (
-                                                        <motion.p className="text-gray-400 italic mt-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                                                            Cliquez pour révéler
-                                                        </motion.p>
-                                                    )}
-                                                </AnimatePresence>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
-                            </div>
-                        )}
+                                        </motion.div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
+                )}
 
-                </div>
                 {/* Zone de réponse */}
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5 }} className="space-y-6">
                     <h3 className={`text-2xl font-semibold flex items-center gap-3 ${currentTheme.textColor}`}>
@@ -889,8 +971,12 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                         Votre hypothèse
                     </h3>
                     <div className="flex gap-4">
-                        <motion.div className="flex-1 relative" whileHover={{ y: -5 }} transition={{ type: 'spring', stiffness: 300 }}>
-                            <input
+                        <motion.div
+                            className="flex-1 relative"
+                         animate={shakeControls}                // ← on rattache ici
+                         whileHover={{ y: -5 }}
+                         transition={{ type: 'spring', stiffness: 300 }}
+                        >     <input
                                 type="text"
                                 value={userGuess}
                                 onChange={(e) => setUserGuess(e.target.value)}
@@ -902,7 +988,6 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                                             : 'border-red-500'
                                         : currentTheme.inputBorderClass ?? 'border-default'
                                 }`}
-                                disabled={hasGuessed}
                             />
                             {!userGuess && (
                                 <motion.div
@@ -921,7 +1006,7 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                             }}
                             whileTap={{ scale: 0.98 }}
                             onClick={handleSubmitGuess}
-                            disabled={!userGuess.trim() || hasGuessed}
+                            disabled={!userGuess.trim()}
                             className={`px-8 py-4 rounded-xl font-bold disabled:opacity-50 flex items-center gap-3 text-xl ${currentTheme.submitButtonClass ?? ''}`}
                         >
                             <motion.span animate={{ scale: [1, 1.3, 1], transition: { repeat: Infinity, duration: 3 } }}>
@@ -958,6 +1043,23 @@ export const IdentificationQuestion: React.FC<IdentificationQuestionProps> = ({ 
                         </motion.div>
                     )}
                 </motion.div>
+
+                {/* juste sous ton input/button */}
+                {hasGuessed && !isCorrect && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ type: 'spring', stiffness: 400 }}
+                        className="text-center mt-2"
+                    >
+                        <Zap className="inline-block mr-2 text-red-400" />
+                        <span className="text-red-400 font-semibold italic">
+      Oups, ce n’est pas la bonne réponse — réessaie !
+    </span>
+                    </motion.div>
+                )}
+
 
                 {/* Section Solution */}
                 <AnimatePresence>
