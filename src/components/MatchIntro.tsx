@@ -224,7 +224,7 @@ export default function MatchIntro({
                                        onEnd,
                                        matchTitle = "GRANDE FINALE"
                                    }: MatchIntroProps) {
-    const [phase, setPhase] = useState<'title' | 'branding' |'teams' | 'teamIntro' | 'presenter' | 'jury' | 'partners' | 'organizer' |  'players' | 'exit'>('title');
+    const [phase, setPhase] = useState<'title' | 'branding' | 'presenter'  |'teams' | 'teamIntro' | 'jury' | 'prePartners' | 'partners' | 'organizer' |  'players' | 'exit'>('title');
     const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
     const [currentPlayerIndex, setCurrentPlayerIndex] = useState(0);
     const [showPlayerStats, setShowPlayerStats] = useState(false);
@@ -289,26 +289,26 @@ export default function MatchIntro({
 
 
     /* ─── JURY : défilement séquentiel ─── */
+    /* ─── JURY : défilement séquentiel ─── */
     useEffect(() => {
         if (phase !== 'jury') return;
-
-        setCurrentJuryIndex(0);               // on repart du premier
+        setCurrentJuryIndex(0);
         const id = setInterval(() => {
             setCurrentJuryIndex(prev => {
                 if (prev < jury.length - 1) return prev + 1;
 
-                // dernier membre : on attend 2 s puis on passe aux partenaires
                 clearInterval(id);
+                // passer à prePartners, pas directement partners
                 setTimeout(() => {
-                    setPhase('partners');
+                    setPhase('prePartners');
                     setCurrentPartnerIndex(0);
                 }, 2000);
                 return prev;
             });
-        }, 3500);                             // ← vitesse : 3,5 s entre chaque carte
-
+        }, 3500);
         return () => clearInterval(id);
     }, [phase, jury.length]);
+
 
 
 
@@ -846,7 +846,7 @@ export default function MatchIntro({
                             <img src={presenter.photo} alt={presenter.name}
                                  className="w-96 h-96 rounded-full mx-auto mb-4 object-cover"/>
                             <h2 className="text-4xl font-bold text-white">{presenter.name}</h2>
-                            <p className="mt-2 text-white/70">« Bienvenue ! »</p>
+                            <p className="mt-2 text-white/70">« Organisateur du Match»</p>
                         </div>
                     </motion.div>
                 )}
@@ -933,7 +933,7 @@ export default function MatchIntro({
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{ delay: 0.4 }}
                             >
-                                <p className="text-white/80 text-sm font-medium tracking-wider">ORGANISATEUR&nbsp;DU&nbsp;MATCH</p>
+                                <p className="text-white/80 text-sm font-medium tracking-wider">PRESENTATEUR&nbsp;DU&nbsp;MATCH</p>
                             </motion.div>
                         </motion.div>
 
@@ -1102,7 +1102,32 @@ export default function MatchIntro({
 
 
 
-            
+            {/* ─── PRE-PARTNERS phase ─── */}
+            <AnimatePresence>
+                {phase === 'prePartners' && (
+                    <motion.div
+                        className="absolute inset-0 bg-black/95 flex flex-col items-center justify-center z-50"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8 }}
+                    >
+                        <h2 className="text-5xl font-bold text-white mb-8">
+                            Maintenant, place aux partenaires !
+                        </h2>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setPhase('partners')}
+                            className="px-8 py-4 bg-yellow-400 text-blue-900 font-bold rounded-full shadow-lg text-2xl"
+                        >
+                            Voir les partenaires
+                        </motion.button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+
 
 
             {/* ─── PARTNERS phase ─── */}
